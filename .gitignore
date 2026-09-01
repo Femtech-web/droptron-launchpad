@@ -12,3 +12,4 @@ build/
 
 # Cairo artifacts
 target/
+private-notes
