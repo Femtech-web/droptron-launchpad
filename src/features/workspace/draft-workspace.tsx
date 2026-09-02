@@ -18,6 +18,7 @@ type DraftWorkspaceProps = {
   mark: "launch" | "distribution" | "vesting";
   actionHref: string;
   actionLabel: string;
+  itemHrefBase?: string;
 };
 
 export function DraftWorkspace(props: DraftWorkspaceProps) {
@@ -39,7 +40,7 @@ export function DraftWorkspace(props: DraftWorkspaceProps) {
       <p>{props.emptyDescription}</p>
     </section> : <section className="draft-register" aria-label={`${props.section} drafts`}>
       <header><span>Name</span><span>Configuration</span><span>Status</span></header>
-      {drafts.map((draft) => <article key={draft.id}><div><strong>{draft.title}</strong><small>{new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date(draft.createdAt))}</small></div><p>{draft.detail}</p><span>Draft</span></article>)}
+      {drafts.map((draft) => <article key={draft.id}><div>{props.itemHrefBase ? <Link href={`${props.itemHrefBase}/${draft.id}`}><strong>{draft.title}</strong></Link> : <strong>{draft.title}</strong>}<small>{new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date(draft.createdAt))}</small></div><p>{draft.detail}</p>{props.itemHrefBase ? <Link className="draft-register__open" href={`${props.itemHrefBase}/${draft.id}`}>Open →</Link> : <span>Draft</span>}</article>)}
     </section>}
   </main>;
 }

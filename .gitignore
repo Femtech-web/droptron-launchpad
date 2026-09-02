@@ -12,6 +12,7 @@ build/
 
 # Cairo artifacts
 target/
+.snfoundry_cache/
 
 # Local product, design, and implementation notes — never commit
 private-notes/

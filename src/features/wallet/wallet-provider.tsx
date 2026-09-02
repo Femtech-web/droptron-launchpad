@@ -5,22 +5,29 @@ import type { WalletWithStarknetFeatures } from "@starknet-io/get-starknet-walle
 import { WalletAccountV6, walletV6 } from "starknet";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { DROPTON_NETWORKS, rpcUrlForChain, type DroptronNetwork } from "./wallet-networks";
+
 type PrivacyStatus = "idle" | "checking" | "supported" | "unsupported";
 
 type WalletContextValue = {
   address: string | null;
+  chainId: string | null;
   error: string | null;
   isConnecting: boolean;
+  isSwitchingNetwork: boolean;
+  networkError: string | null;
   privacyStatus: PrivacyStatus;
   walletAccount: WalletAccountV6 | null;
   walletName: string | null;
   wallets: readonly WalletWithStarknetFeatures[];
   connect: (wallet: WalletWithStarknetFeatures) => Promise<void>;
   disconnect: () => void;
+  switchNetwork: (network: DroptronNetwork) => Promise<void>;
 };
 
 const WalletContext = createContext<WalletContextValue | null>(null);
 const REQUIRED_WALLET_API = [0, 10, 3] as const;
+const LAST_WALLET_KEY = "droptron.wallet.v1";
 type WalletV6 = Parameters<typeof walletV6.standardConnect>[0];
 
 function supportsPrivacyWallet(versions: readonly string[]) {
@@ -36,13 +43,18 @@ function supportsPrivacyWallet(versions: readonly string[]) {
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const storeRef = useRef<Store | null>(null);
+  const hasAttemptedRestoreRef = useRef(false);
   const [wallets, setWallets] = useState<readonly WalletWithStarknetFeatures[]>([]);
+  const [activeWallet, setActiveWallet] = useState<WalletWithStarknetFeatures | null>(null);
   const [address, setAddress] = useState<string | null>(null);
+  const [chainId, setChainId] = useState<string | null>(null);
   const [walletName, setWalletName] = useState<string | null>(null);
   const [privacyStatus, setPrivacyStatus] = useState<PrivacyStatus>("idle");
   const [walletAccount, setWalletAccount] = useState<WalletAccountV6 | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isSwitchingNetwork, setIsSwitchingNetwork] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [networkError, setNetworkError] = useState<string | null>(null);
 
   useEffect(() => {
     const store = createStore();
@@ -52,14 +64,31 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const disconnect = useCallback(() => {
+    window.localStorage.removeItem(LAST_WALLET_KEY);
     setAddress(null);
+    setChainId(null);
     setWalletName(null);
+    setActiveWallet(null);
     setPrivacyStatus("idle");
     setWalletAccount(null);
     setError(null);
+    setNetworkError(null);
   }, []);
 
-  const connect = useCallback(async (wallet: WalletWithStarknetFeatures) => {
+  const connectPrivacyAccount = useCallback(async (v6Wallet: WalletV6, nextChain: string, supported: boolean) => {
+    if (!supported) {
+      setWalletAccount(null);
+      return;
+    }
+    const rpcUrl = rpcUrlForChain(nextChain);
+    if (!rpcUrl || rpcUrl === "your_testnet_rpc_url") {
+      setWalletAccount(null);
+      return;
+    }
+    setWalletAccount(await WalletAccountV6.connect({ nodeUrl: rpcUrl }, v6Wallet, undefined, undefined, true));
+  }, []);
+
+  const connectWallet = useCallback(async (wallet: WalletWithStarknetFeatures, silentMode = false) => {
     setIsConnecting(true);
     setError(null);
     setPrivacyStatus("checking");
@@ -70,15 +99,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // keep that package seam confined to this adapter.
       const v6Wallet = wallet as unknown as WalletV6;
       const [connection, versions] = await Promise.all([
-        walletV6.standardConnect(v6Wallet),
+        walletV6.standardConnect(v6Wallet, silentMode),
         walletV6.supportedWalletApi(v6Wallet),
       ]);
       const nextAddress = connection.accounts[0]?.address;
+      const nextChain = connection.accounts[0]?.chains[0];
 
       if (!nextAddress) throw new Error("No account was shared by the wallet.");
 
       setAddress(nextAddress);
+      setChainId(nextChain ? String(nextChain).replace(/^starknet:/, "") : null);
       setWalletName(wallet.name);
+      setActiveWallet(wallet);
+      window.localStorage.setItem(LAST_WALLET_KEY, wallet.name);
 
       if (!supportsPrivacyWallet(versions)) {
         setPrivacyStatus("unsupported");
@@ -87,34 +120,85 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
 
       setPrivacyStatus("supported");
-
-      const configuredRpcUrl = process.env.NEXT_PUBLIC_STARKNET_RPC_URL?.trim();
-      const rpcUrl = configuredRpcUrl && configuredRpcUrl !== "your_testnet_rpc_url" ? configuredRpcUrl : undefined;
-      if (!rpcUrl) {
-        setWalletAccount(null);
-        return;
-      }
-
-      setWalletAccount(await WalletAccountV6.connect({ nodeUrl: rpcUrl }, v6Wallet, undefined, undefined, true));
+      await connectPrivacyAccount(v6Wallet, String(nextChain ?? ""), true);
     } catch (caught) {
       disconnect();
       setError(caught instanceof Error ? caught.message : "Wallet connection was not completed.");
     } finally {
       setIsConnecting(false);
     }
-  }, [disconnect]);
+  }, [connectPrivacyAccount, disconnect]);
+
+  const connect = useCallback(async (wallet: WalletWithStarknetFeatures) => {
+    await connectWallet(wallet, false);
+  }, [connectWallet]);
+
+  useEffect(() => {
+    if (hasAttemptedRestoreRef.current || wallets.length === 0) return;
+    hasAttemptedRestoreRef.current = true;
+    const savedWalletName = window.localStorage.getItem(LAST_WALLET_KEY);
+    if (!savedWalletName) return;
+    const savedWallet = wallets.find((wallet) => wallet.name === savedWalletName);
+    if (!savedWallet) {
+      window.localStorage.removeItem(LAST_WALLET_KEY);
+      return;
+    }
+    void connectWallet(savedWallet, true);
+  }, [connectWallet, wallets]);
+
+  useEffect(() => {
+    if (!activeWallet) return;
+    const v6Wallet = activeWallet as unknown as WalletV6;
+    return walletV6.subscribeWalletEvent(v6Wallet, (change) => {
+      const account = change.accounts?.[0];
+      if (!account) {
+        disconnect();
+        return;
+      }
+      const nextChain = String(account.chains[0] ?? "").replace(/^starknet:/, "");
+      setAddress(account.address);
+      setChainId(nextChain || null);
+      setNetworkError(null);
+      void connectPrivacyAccount(v6Wallet, nextChain, privacyStatus === "supported").catch(() => {
+        setWalletAccount(null);
+        setNetworkError("The wallet changed network, but its RPC connection could not be initialized.");
+      });
+    });
+  }, [activeWallet, connectPrivacyAccount, disconnect, privacyStatus]);
+
+  const switchNetwork = useCallback(async (network: DroptronNetwork) => {
+    if (!activeWallet) return;
+    setIsSwitchingNetwork(true);
+    setNetworkError(null);
+    try {
+      const v6Wallet = activeWallet as unknown as WalletV6;
+      const changed = await walletV6.switchStarknetChain(v6Wallet, DROPTON_NETWORKS[network].chainId);
+      if (!changed) throw new Error("The wallet did not switch networks.");
+      const nextChain = String(await walletV6.requestChainId(v6Wallet));
+      setChainId(nextChain);
+      await connectPrivacyAccount(v6Wallet, nextChain, privacyStatus === "supported");
+    } catch (caught) {
+      setNetworkError(caught instanceof Error ? caught.message : "The network switch was not completed.");
+    } finally {
+      setIsSwitchingNetwork(false);
+    }
+  }, [activeWallet, connectPrivacyAccount, privacyStatus]);
 
   const value = useMemo<WalletContextValue>(() => ({
     address,
+    chainId,
     error,
     isConnecting,
+    isSwitchingNetwork,
+    networkError,
     privacyStatus,
     walletAccount,
     walletName,
     wallets,
     connect,
     disconnect,
-  }), [address, connect, disconnect, error, isConnecting, privacyStatus, walletAccount, walletName, wallets]);
+    switchNetwork,
+  }), [address, chainId, connect, disconnect, error, isConnecting, isSwitchingNetwork, networkError, privacyStatus, switchNetwork, walletAccount, walletName, wallets]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

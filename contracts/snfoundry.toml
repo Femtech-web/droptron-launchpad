@@ -1,0 +1,5 @@
+[sncast.default]
+url = "http://127.0.0.1:5050"
+wait-params = { timeout = 300, retry-interval = 5 }
+block-explorer = "Voyager"
+show-explorer-links = true

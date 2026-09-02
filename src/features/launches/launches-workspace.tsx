@@ -11,5 +11,6 @@ export function LaunchesWorkspace() {
     mark="launch"
     actionHref="/app/launches/new"
     actionLabel="New launch"
+    itemHrefBase="/app/launches"
   />;
 }

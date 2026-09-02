@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { networkLabel } from "./wallet-identity";
 import { useWallet } from "./wallet-provider";
 
 function shortenAddress(address: string) {
@@ -9,11 +10,27 @@ function shortenAddress(address: string) {
 }
 
 export function WalletButton() {
-  const { address, connect, disconnect, error, isConnecting, walletName, wallets } = useWallet();
+  const { address, chainId, connect, disconnect, error, isConnecting, walletName, wallets } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copyAddress() {
+    if (!address) return;
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
 
   if (address) {
-    return <button className="wallet-button wallet-button--connected" type="button" onClick={disconnect} title="Disconnect wallet"><span />{shortenAddress(address)}</button>;
+    return <div className="wallet-control">
+      <button className="wallet-button wallet-button--connected" type="button" onClick={() => setIsOpen((value) => !value)} aria-expanded={isOpen}><span />{shortenAddress(address)}</button>
+      {isOpen && <div className="wallet-menu wallet-menu--account" role="dialog" aria-label="Connected Starknet account">
+        <div><strong>{walletName ?? "Connected wallet"}</strong><small>{networkLabel(chainId)}</small></div>
+        <code title={address}>{address}</code>
+        <button type="button" onClick={() => void copyAddress()}>{copied ? "Address copied" : "Copy address"}<span>↗</span></button>
+        <button type="button" onClick={() => { disconnect(); setIsOpen(false); }}>Disconnect<span>→</span></button>
+      </div>}
+    </div>;
   }
 
   return <div className="wallet-control">

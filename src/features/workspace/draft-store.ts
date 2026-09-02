@@ -3,6 +3,7 @@ export type WorkspaceDraft = {
   title: string;
   detail: string;
   createdAt: string;
+  values?: Record<string, string>;
 };
 
 export function readDrafts(storageKey: string): WorkspaceDraft[] {
@@ -17,4 +18,8 @@ export function readDrafts(storageKey: string): WorkspaceDraft[] {
 
 export function saveDraft(storageKey: string, draft: WorkspaceDraft) {
   window.localStorage.setItem(storageKey, JSON.stringify([draft, ...readDrafts(storageKey)]));
+}
+
+export function readDraft(storageKey: string, id: string) {
+  return readDrafts(storageKey).find((draft) => draft.id === id) ?? null;
 }
