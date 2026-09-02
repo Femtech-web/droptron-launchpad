@@ -12,4 +12,6 @@ build/
 
 # Cairo artifacts
 target/
-private-notes
+
+# Local product, design, and implementation notes — never commit
+private-notes/
