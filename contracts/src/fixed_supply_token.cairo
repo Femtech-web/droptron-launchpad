@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-pub trait IDroptronDemoToken<TState> {
+pub trait IDroptronFixedSupplyToken<TState> {
     fn name(self: @TState) -> ByteArray;
     fn symbol(self: @TState) -> ByteArray;
     fn decimals(self: @TState) -> u8;
@@ -15,19 +15,25 @@ pub trait IDroptronDemoToken<TState> {
     ) -> bool;
 }
 
-/// Fixed-supply ERC-20-shaped token for Droptron's Sepolia integration tests.
-/// It has no public mint entrypoint and must not be presented as a production asset.
+/// Configurable fixed-supply ERC-20 token created through Droptron.
+/// Supply is created once and assigned to the treasury.
 #[starknet::contract]
-pub mod DroptronDemoToken {
+pub mod DroptronFixedSupplyToken {
+    use core::byte_array::ByteArrayTrait;
     use core::num::traits::Zero;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     #[storage]
     struct Storage {
         total_supply: u256,
+        name: felt252,
+        name_len: u8,
+        symbol: felt252,
+        symbol_len: u8,
+        decimals: u8,
         balances: Map<ContractAddress, u256>,
         allowances: Map<(ContractAddress, ContractAddress), u256>,
     }
@@ -58,26 +64,49 @@ pub mod DroptronDemoToken {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, recipient: ContractAddress, initial_supply: u256) {
-        assert(recipient.is_non_zero(), 'INVALID_RECIPIENT');
-        assert(initial_supply != 0, 'INVALID_SUPPLY');
-        self.total_supply.write(initial_supply);
-        self.balances.entry(recipient).write(initial_supply);
-        self.emit(Transfer { from: 0.try_into().unwrap(), to: recipient, value: initial_supply });
+    fn constructor(
+        ref self: ContractState,
+        treasury: ContractAddress,
+        total_supply: u256,
+        name: felt252,
+        name_len: u8,
+        symbol: felt252,
+        symbol_len: u8,
+        decimals: u8,
+    ) {
+        assert(treasury.is_non_zero(), 'INVALID_TREASURY');
+        assert(treasury != get_contract_address(), 'TREASURY_IS_TOKEN');
+        assert(total_supply != 0, 'INVALID_SUPPLY');
+        assert(name_len > 0 && name_len <= 31, 'INVALID_NAME');
+        assert(symbol_len > 0 && symbol_len <= 10, 'INVALID_SYMBOL');
+        assert(decimals <= 18, 'INVALID_DECIMALS');
+
+        self.total_supply.write(total_supply);
+        self.name.write(name);
+        self.name_len.write(name_len);
+        self.symbol.write(symbol);
+        self.symbol_len.write(symbol_len);
+        self.decimals.write(decimals);
+        self.balances.entry(treasury).write(total_supply);
+        self.emit(Transfer { from: 0.try_into().unwrap(), to: treasury, value: total_supply });
     }
 
     #[abi(embed_v0)]
-    impl DroptronDemoTokenImpl of super::IDroptronDemoToken<ContractState> {
+    impl DroptronFixedSupplyTokenImpl of super::IDroptronFixedSupplyToken<ContractState> {
         fn name(self: @ContractState) -> ByteArray {
-            "Droptron Demo Token"
+            let mut result: ByteArray = "";
+            result.append_word(self.name.read(), self.name_len.read().into());
+            result
         }
 
         fn symbol(self: @ContractState) -> ByteArray {
-            "DROP"
+            let mut result: ByteArray = "";
+            result.append_word(self.symbol.read(), self.symbol_len.read().into());
+            result
         }
 
         fn decimals(self: @ContractState) -> u8 {
-            18
+            self.decimals.read()
         }
 
         fn total_supply(self: @ContractState) -> u256 {
@@ -121,6 +150,7 @@ pub mod DroptronDemoToken {
             self.transfer_balance(sender, recipient, amount);
             true
         }
+
     }
 
     #[generate_trait]

@@ -5,14 +5,23 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
-    "start": "next start"
+    "start": "next start",
+    "deploy:drop:estimate": "node --env-file=.env.local scripts/deploy-drop.mjs estimate",
+    "deploy:drop": "node --env-file=.env.local scripts/deploy-drop.mjs deploy",
+    "declare:launch:estimate": "node --env-file=.env.local scripts/declare-launch.mjs estimate",
+    "declare:launch": "node --env-file=.env.local scripts/declare-launch.mjs declare",
+    "mainnet:contracts:estimate": "node --env-file=.env.local scripts/mainnet-contracts.mjs estimate",
+    "mainnet:contracts:declare": "node --env-file=.env.local scripts/mainnet-contracts.mjs declare",
+    "mainnet:helper:estimate": "node --env-file=.env.local scripts/mainnet-contracts.mjs estimate-helper participation",
+    "mainnet:helper:deploy": "node --env-file=.env.local scripts/mainnet-contracts.mjs deploy-helper participation"
   },
   "dependencies": {
     "@fontsource-variable/instrument-sans": "^5.2.8",
     "@fontsource-variable/manrope": "^5.2.8",
     "@starknet-io/get-starknet-discovery": "6.0.3",
     "@starknet-io/get-starknet-wallet-standard": "6.0.3",
-    "next": "16.0.8",
+    "@supabase/supabase-js": "^2.114.0",
+    "next": "^16.3.4",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "starknet": "10.4.0",

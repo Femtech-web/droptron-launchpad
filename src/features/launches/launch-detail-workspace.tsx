@@ -4,9 +4,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { WalletGate } from "@/features/wallet/wallet-gate";
 import { useWallet } from "@/features/wallet/wallet-provider";
-import { readDraft, type WorkspaceDraft } from "@/features/workspace/draft-store";
+import { useWalletSession } from "@/features/wallet/wallet-session-provider";
+import { loadDraft, type WorkspaceDraft } from "@/features/workspace/draft-store";
+import { LaunchDeploymentPanel } from "./launch-deployment-panel";
+import { LaunchParticipationPanel } from "./launch-participation-panel";
+import { loadPublicLaunch } from "./public-launch-store";
 
 const STORAGE_KEY = "droptron.launches.v1";
 
@@ -31,24 +34,38 @@ function shortAddress(value: string) {
   return value.startsWith("0x") && value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-8)}` : value;
 }
 
+function sameAddress(left?: string | null, right?: string | null) {
+  try { return Boolean(left && right && BigInt(left) === BigInt(right)); } catch { return false; }
+}
+
 export function LaunchDetailWorkspace() {
   const { address } = useWallet();
+  const { status: sessionStatus } = useWalletSession();
   const params = useParams<{ id: string }>();
   const [draft, setDraft] = useState<WorkspaceDraft | null | undefined>(undefined);
 
-  useEffect(() => setDraft(readDraft(STORAGE_KEY, params.id)), [params.id]);
+  useEffect(() => {
+    let active = true;
+    void Promise.all([
+      loadDraft(STORAGE_KEY, params.id, sessionStatus === "synced"),
+      loadPublicLaunch(params.id).catch(() => null),
+    ]).then(([owned, published]) => {
+      if (active) setDraft(owned ?? published);
+    });
+    return () => { active = false; };
+  }, [params.id, sessionStatus]);
 
-  if (!address) return <WalletGate />;
   if (draft === undefined) return <main className="launch-detail" id="main-content"><p className="launch-detail__loading">Loading launch…</p></main>;
-  if (!draft) return <main className="launch-detail" id="main-content"><section className="launch-detail__missing"><h1>Launch not found</h1><p>This local draft may have been removed from this browser.</p><Link href="/app">Return to launches →</Link></section></main>;
+  if (!draft) return <main className="launch-detail" id="main-content"><section className="launch-detail__missing"><h1>Launch not found</h1><p>This launch is not available in the connected wallet workspace.</p><Link href="/app">Return to launches →</Link></section></main>;
 
   const values = draft.values ?? {};
+  const canManage = sameAddress(address, values.owner);
   return <main className="launch-detail" id="main-content" tabIndex={-1}>
-    <header className="launch-detail__heading"><div><Link href="/app">← Launches</Link><p className="app-eyebrow">Draft launch</p><h1>{draft.title}</h1><p>Review the public market terms before generating contract calldata.</p></div><span>Local draft</span></header>
-    <section className="launch-detail__body">
+    <header className="launch-detail__heading"><div><Link href="/app">← Launches</Link><p className="app-eyebrow">{values.funded === "true" ? "Live launch" : "Creator workspace"}</p><h1>{draft.title}</h1><p>{values.funded === "true" ? "Review the sale and enter through its private participation route." : "Review, deploy and fund the public sale terms."}</p></div><span>{values.funded === "true" ? "Funded" : values.contractAddress ? "Deployed" : "Draft"}</span></header>
+    <section className={`launch-detail__body${canManage ? "" : " launch-detail__body--public"}`}>
       <div className="launch-detail__terms"><header><div><p className="app-eyebrow">Configuration</p><h2>Launch terms</h2></div><p>These values become public contract configuration when deployed.</p></header><dl>{fieldRows.filter((field) => values[field.key]).map((field) => <div key={field.key}><dt>{field.label}</dt><dd title={values[field.key]}>{field.format ? field.format(values[field.key]) : shortAddress(values[field.key])}</dd></div>)}</dl></div>
-      <aside className="launch-detail__readiness"><p className="app-eyebrow">Deployment readiness</p><h2>Contract binding pending</h2><p>The draft is valid, but no transaction is available until the reviewed Cairo launch contract and token-decimal checks are connected.</p><ol><li><i />Form validation complete</li><li><i />Token metadata check pending</li><li><i />Cairo artifact pending</li></ol></aside>
+      {canManage && <LaunchDeploymentPanel draft={draft} onUpdated={setDraft} />}
     </section>
-    <section className="launch-detail__route"><div><p className="app-eyebrow">Private participation route</p><h2>Public execution.<br />Shielded allocation.</h2></div><div><p>The launch contract receives a purchase from Droptron’s shared anonymizer and returns sale tokens to it. STRK20 then credits the output to the participant’s private note.</p><dl><div><dt>Visible</dt><dd>Price, amount, timing, aggregate activity</dd></div><div><dt>Protected</dt><dd>Participant identity and allocation ownership</dd></div></dl></div></section>
+    <section className="launch-detail__route"><div><p className="app-eyebrow">Participant experience</p><h2>Choose allocation.<br />Complete privately.</h2><dl><div><dt>Visible</dt><dd>Price, timing and aggregate activity</dd></div><div><dt>Protected</dt><dd>Your address and allocation ownership</dd></div></dl></div><LaunchParticipationPanel draft={draft} /></section>
   </main>;
 }

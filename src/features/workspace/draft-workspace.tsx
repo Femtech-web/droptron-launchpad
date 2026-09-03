@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { WalletGate } from "@/features/wallet/wallet-gate";
 import { useWallet } from "@/features/wallet/wallet-provider";
+import { useWalletSession } from "@/features/wallet/wallet-session-provider";
 
-import { readDrafts, type WorkspaceDraft } from "./draft-store";
+import { loadDrafts, type WorkspaceDraft } from "./draft-store";
 
 type DraftWorkspaceProps = {
   storageKey: string;
@@ -19,13 +20,21 @@ type DraftWorkspaceProps = {
   actionHref: string;
   actionLabel: string;
   itemHrefBase?: string;
+  children?: ReactNode;
 };
 
 export function DraftWorkspace(props: DraftWorkspaceProps) {
   const { address } = useWallet();
+  const { status: sessionStatus } = useWalletSession();
   const [drafts, setDrafts] = useState<WorkspaceDraft[]>([]);
 
-  useEffect(() => setDrafts(readDrafts(props.storageKey)), [props.storageKey]);
+  useEffect(() => {
+    let active = true;
+    void loadDrafts(props.storageKey, sessionStatus === "synced").then((items) => {
+      if (active) setDrafts(items);
+    });
+    return () => { active = false; };
+  }, [props.storageKey, sessionStatus]);
 
   if (!address) return <WalletGate />;
 
@@ -34,6 +43,7 @@ export function DraftWorkspace(props: DraftWorkspaceProps) {
       <div><p className="app-eyebrow">{props.section}</p><h1>{props.title}</h1><p>{props.description}</p></div>
       <Link className="product-workspace__action" href={props.actionHref}>{props.actionLabel}<span>→</span></Link>
     </header>
+    {props.children}
     {drafts.length === 0 ? <section className="empty-workspace" aria-labelledby={`${props.mark}-empty-title`}>
       <div className={`empty-workspace__mark empty-workspace__mark--${props.mark}`} aria-hidden="true"><span /><i /></div>
       <h2 id={`${props.mark}-empty-title`}>{props.emptyTitle}</h2>

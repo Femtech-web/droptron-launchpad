@@ -1,11 +1,11 @@
 # STRK20 Privacy Integration Plan — Droptron
 
-Generated September 1, 2026. Droptron is greenfield: no application code, wallet module, Cairo project, or backend exists yet. Re-verify package versions and wallet capability before coding.
+Generated September 1, 2026; updated September 2, 2026 after the product flow was approved. Droptron now has a Next.js app, Wallet API integration, a tested Cairo launch contract, and browser-local product drafts. Re-verify package versions and wallet capability before each privacy phase.
 
 ## 1. Project snapshot
 
-- Stack: proposed Next.js/TypeScript frontend; Cairo/Scarb contracts with Starknet Foundry tests.
-- Relevant code: none yet; wallet connection, transaction, UI, and contract modules are to be created.
+- Stack: Next.js 16 / React 19 / TypeScript frontend; starknet.js 10.4.0 and get-starknet 6.0.3; Cairo/Scarb contracts with Starknet Foundry tests.
+- Relevant code: wallet connection in `src/features/wallet/wallet-provider.tsx`, Wallet API actions in `src/features/privacy`, launch surfaces in `src/features/launches`, unified distribution creation in `src/features/distributions`, and Cairo launch logic in `contracts/src/launch.cairo`.
 - Privacy goal: hide the user identity behind launch participation and private entitlement-note redemption for airdrops and multi-tranche vesting; protect private allocations/distributions and shielded balances; never claim a confidential bonding curve.
 - Environment: local tests for logic; Starknet mainnet for final integration and scoring; Ready extension first.
 
@@ -40,14 +40,40 @@ This delivers participant/address privacy, shielded balances, and private airdro
 4. Add honestly-labelled shield, private transfer, and unshield interfaces.
 5. Verify with Ready and the wallet test dapp.
 
+### Mainnet readiness checkpoint — September 2, 2026
+
+- Ready Mainnet account: `0x006995eb3a05b16cf42a070792e7b4ead3cda7f5137498d9bbde3fea0a4a0cf9`.
+- Droptron uses the documented Mainnet pool and the verified Lava RPC through `NEXT_PUBLIC_STARKNET_MAINNET_RPC_URL`.
+- Funding and viewing-key registration have succeeded on Mainnet and are recorded in the local transaction ledger.
+- Mainnet shield, private transfer, and unshield flows have succeeded and their receipts are recorded in the private transaction ledger. Phase 1 is complete for the wallet surface.
+- No hash moves into `strk20.json` until it is classified against the sprint rules and selected as final evidence.
+- The wallet UI reads the live pool fee before STRK shields, explains wallet confirmation when required, and reports wallet cancellation or failure through product toasts.
+- Droptron now prevents rapid duplicate form submission, assigns a request ID to each Wallet API call, hides stale private values after an action, and refreshes public balances automatically.
+- A withdrawal-specific balance watcher handles Ready responses that remain pending after a successful unshield, then closes the modal, reports success, and refreshes balances.
+
 ## 6. Phase 2 — launch MVP
 
-1. Implement public launch configuration and bonding-curve rules in Cairo.
-2. Design pool withdraw → launch action → shielded allocation.
-3. Implement and test the anonymizer, token validation, and atomic rollback.
-4. Clearly separate public launch data from private participation in the UI.
+Product IA approved September 2, 2026: navigation is Launches, Distributions, Claims, Wallet. Launches separates participant `Explore` from creator `Manage`; Distributions contains Disperse, Airdrop, and Vesting; Claims is recipient-only.
+
+1. Implement public launch configuration and bonding-curve rules in Cairo. **Done:** the existing contract and test suite cover fixed and checked linear pricing, funding, purchase, cancellation, proceeds, recovery, token deltas, and reentrancy.
+2. Design pool withdraw → launch action → shielded allocation. **Done locally.**
+3. Implement and test the anonymizer, token validation, and atomic rollback. **Done locally:** the helper is pinned to one pool, verifies the launch token pair, measures payment/output deltas, approves pool collection, and can return unused maximum payment to a separate private note. It remains review-required and undeployed.
+4. Clearly separate public launch data from private participation in the UI. **Done for the launch-detail surface:** participants enter sale-token amount, receive a live quote, run wallet simulation, and then submit one atomic Wallet API action group once a reviewed helper address is configured.
+
+App progress: creator and participant views are separated; the launch detail can deploy the configured class and atomically approve/fund the allocation. Private participation is wired but remains safely blocked until the team-owned helper and launch class are reviewed, deployed, and configured. Public Explore now reads a canonical Supabase launch registry; publication is accepted only after the server verifies the class, creator, token pair, and funded state against Starknet. Migration `202609030003_launch_publication.sql` must be applied before this registry can be tested.
+
+### Mainnet DROP pre-deployment checkpoint — September 3, 2026
+
+- The reusable fixed-supply template lets a creator choose token name, symbol, decimals, supply, and treasury. DROP will be the team's first product-test instance through the same creator flow.
+- Only `NEXT_PUBLIC_MAINNET_ADMIN_ADDRESS` can register the shared template. After registration, launch creators can deploy their own instances through the New Launch flow.
+- Read-only estimation must succeed before declaration or deployment is offered. The UI shows the exact next step, estimated fee, public STRK balance, hashes, and deterministic deployment address when available.
+- `NEXT_PUBLIC_MAINNET_TOKEN_CREATION_STAGE=locked` is the final safety lock. It unlocks only the separately approved `declare` or `deploy` stage, so template-registration approval cannot authorize a later token deployment.
+- Each created token is recorded locally and selected in the launch form. After the first DROP instance is reviewed, `NEXT_PUBLIC_MAINNET_DROP_TOKEN_ADDRESS` becomes its durable cross-device wallet configuration.
+- Latest read-only template estimate: class `0x512a4edf0df6d870636958f51fa296e9b71b69852c97ed28730380a304e93a9`, approximately 25.971 STRK to register at the time checked. No transaction was submitted.
 
 ## 7. Phase 3 — private distribution, airdrop claim, and multi-tranche vesting
+
+Storage decision: Starknet contracts remain canonical for funding, schedules, and claim validity. Browser local storage is sufficient for current drafts; Supabase/Postgres may later index public metadata, contract addresses, branding, and transaction status, but never viewing keys, notes, proofs, or authoritative private allocations. See `PRODUCT_ARCHITECTURE.md`.
 
 1. Add private disperse for team or treasury distributions.
 2. Add entitlement-token issuance: eligibility is verified offchain, then the recipient receives a private STRK20 entitlement note.

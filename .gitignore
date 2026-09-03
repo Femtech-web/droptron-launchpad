@@ -14,5 +14,13 @@ build/
 target/
 .snfoundry_cache/
 
+# The browser-wallet Sepolia deployer needs the reviewed DROP Sierra and CASM.
+!contracts/target/
+contracts/target/*
+!contracts/target/dev/
+contracts/target/dev/*
+!contracts/target/dev/droptron_contracts_DroptronFixedSupplyToken.contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronFixedSupplyToken.compiled_contract_class.json
+
 # Local product, design, and implementation notes — never commit
 private-notes/
