@@ -14,13 +14,23 @@ build/
 target/
 .snfoundry_cache/
 
-# The browser-wallet Sepolia deployer needs the reviewed DROP Sierra and CASM.
+# The browser-wallet Mainnet runway needs only reviewed production Sierra/CASM.
 !contracts/target/
 contracts/target/*
 !contracts/target/dev/
 contracts/target/dev/*
 !contracts/target/dev/droptron_contracts_DroptronFixedSupplyToken.contract_class.json
 !contracts/target/dev/droptron_contracts_DroptronFixedSupplyToken.compiled_contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronLaunch.contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronLaunch.compiled_contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronLaunchParticipation.contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronLaunchParticipation.compiled_contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronClaimSeries.contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronClaimSeries.compiled_contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronDistributionFactory.contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronDistributionFactory.compiled_contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronClaimRedemption.contract_class.json
+!contracts/target/dev/droptron_contracts_DroptronClaimRedemption.compiled_contract_class.json
 
 # Local product, design, and implementation notes — never commit
 private-notes/

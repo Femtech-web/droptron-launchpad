@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RpcProvider } from "starknet";
 
 import { useToast } from "@/features/feedback/toast-provider";
@@ -35,6 +35,11 @@ async function waitForAcceptance(provider: RpcProvider, transactionHash: string)
   await provider.waitForTransaction(transactionHash, { retryInterval: 3_000 });
 }
 
+async function launchIsFunded(provider: RpcProvider, contractAddress: string) {
+  const result = await provider.callContract({ contractAddress, entrypoint: "is_funded" });
+  return BigInt(result[0] ?? "0") !== BigInt(0);
+}
+
 function explorerTransaction(chainId: string | null, hash: string) {
   return `${networkFromChainId(chainId) === "sepolia" ? "https://sepolia.voyager.online" : "https://voyager.online"}/tx/${hash}`;
 }
@@ -49,6 +54,7 @@ export function LaunchDeploymentPanel({ draft, onUpdated }: { draft: WorkspaceDr
   const { address, chainId, walletAccount } = useWallet();
   const { status: sessionStatus } = useWalletSession();
   const showToast = useToast();
+  const actionLock = useRef(false);
   const [isWorking, setIsWorking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const values = draft.values ?? {};
@@ -60,9 +66,10 @@ export function LaunchDeploymentPanel({ draft, onUpdated }: { draft: WorkspaceDr
   const draftMatchesNetwork = !values.chainId || values.chainId === chainId;
 
   async function deploy() {
-    if (!walletAccount || !address || !isOwner || !draftMatchesNetwork || !configuredClassHash) return;
+    if (!walletAccount || !address || !isOwner || !draftMatchesNetwork || !configuredClassHash || contractAddress || actionLock.current) return;
     const rpcUrl = rpcUrlForChain(chainId);
     if (!rpcUrl) return setMessage("Configure the RPC URL for this network first.");
+    actionLock.current = true;
     setIsWorking(true);
     setMessage("Checking token metadata and launch class…");
     try {
@@ -81,10 +88,10 @@ export function LaunchDeploymentPanel({ draft, onUpdated }: { draft: WorkspaceDr
         BigInt(address), BigInt(values.saleToken), BigInt(values.paymentToken), BigInt(saleDecimals), BigInt(paymentDecimals),
         BigInt(values.pricing === "linear" ? 1 : 0), ...uint256(initialPrice), ...uint256(slope), ...uint256(allocation), ...uint256(raiseLimit), BigInt(startsAt), BigInt(endsAt),
       ];
-      setMessage("Confirm launch deployment in Ready.");
+      setMessage("Confirm launch deployment in your wallet.");
       const result = await walletAccount.deploy({ classHash: configuredClassHash, constructorCalldata, unique: true });
       const nextAddress = result.contract_address[0];
-      if (!nextAddress) throw new Error("Ready did not return the launch contract address.");
+      if (!nextAddress) throw new Error("Your wallet did not return the launch contract address.");
       setMessage("Waiting for Starknet confirmation…");
       await waitForAcceptance(provider, result.transaction_hash);
       const next = await updateDraft(STORAGE_KEY, draft.id, { values: { contractAddress: nextAddress, deploymentTx: result.transaction_hash, saleDecimals: String(saleDecimals), paymentDecimals: String(paymentDecimals) } }, sessionStatus === "synced");
@@ -97,25 +104,39 @@ export function LaunchDeploymentPanel({ draft, onUpdated }: { draft: WorkspaceDr
       setMessage(nextMessage);
       showToast({ message: nextMessage, tone: nextMessage.startsWith("Request cancelled") ? "info" : "error" });
     } finally {
+      actionLock.current = false;
       setIsWorking(false);
     }
   }
 
   async function fund() {
-    if (!walletAccount || !contractAddress || !isOwner || funded) return;
+    if (!walletAccount || !contractAddress || !isOwner || funded || published || actionLock.current) return;
     const rpcUrl = rpcUrlForChain(chainId);
     if (!rpcUrl) return setMessage("Configure the RPC URL for this network first.");
     const allocation = parseTokenAmount(values.saleAllocation, Number(values.saleDecimals));
     if (!allocation) return setMessage("The sale allocation is invalid.");
+    actionLock.current = true;
     setIsWorking(true);
-    setMessage("Confirm token approval and launch funding in Ready.");
+    const provider = new RpcProvider({ nodeUrl: rpcUrl });
     try {
+      if (await launchIsFunded(provider, contractAddress)) {
+        const existing = await updateDraft(STORAGE_KEY, draft.id, { values: { funded: "true" } }, sessionStatus === "synced");
+        if (existing) onUpdated(existing.draft);
+        setMessage("Funding is already confirmed on Starknet. Publish the launch next.");
+        showToast({ message: "Launch funding is already confirmed.", tone: "success" });
+        return;
+      }
+
+      setMessage("Confirm token approval and launch funding in your wallet.");
       const [low, high] = uint256(allocation);
       const result = await walletAccount.execute([
-        { contractAddress: values.saleToken, entrypoint: "approve", calldata: [contractAddress, low, high] },
+        {
+          contractAddress: values.saleToken,
+          entrypoint: "approve",
+          calldata: [contractAddress, `0x${low.toString(16)}`, `0x${high.toString(16)}`],
+        },
         { contractAddress, entrypoint: "fund", calldata: [] },
       ]);
-      const provider = new RpcProvider({ nodeUrl: rpcUrl });
       setMessage("Waiting for Starknet confirmation…");
       await waitForAcceptance(provider, result.transaction_hash);
       const next = await updateDraft(STORAGE_KEY, draft.id, { values: { funded: "true", fundingTx: result.transaction_hash } }, sessionStatus === "synced");
@@ -137,16 +158,29 @@ export function LaunchDeploymentPanel({ draft, onUpdated }: { draft: WorkspaceDr
       }
     } catch (error) {
       console.error("[Droptron launch] funding failed", error);
+      try {
+        if (await launchIsFunded(provider, contractAddress)) {
+          const confirmed = await updateDraft(STORAGE_KEY, draft.id, { values: { funded: "true" } }, sessionStatus === "synced");
+          if (confirmed) onUpdated(confirmed.draft);
+          setMessage("The wallet response timed out, but funding was confirmed on Starknet. Publish the launch next.");
+          showToast({ message: "Launch funding confirmed on Starknet.", tone: "success" });
+          return;
+        }
+      } catch (reconciliationError) {
+        console.error("[Droptron launch] funding reconciliation failed", reconciliationError);
+      }
       const nextMessage = productErrorMessage(error, "Launch funding was not completed.");
       setMessage(nextMessage);
       showToast({ message: nextMessage, tone: nextMessage.startsWith("Request cancelled") ? "info" : "error" });
     } finally {
+      actionLock.current = false;
       setIsWorking(false);
     }
   }
 
   async function publish() {
-    if (!funded || published || !isOwner || !contractAddress) return;
+    if (!funded || published || !isOwner || !contractAddress || actionLock.current) return;
+    actionLock.current = true;
     setIsWorking(true);
     setMessage("Verifying the funded contract on Starknet…");
     try {
@@ -161,10 +195,12 @@ export function LaunchDeploymentPanel({ draft, onUpdated }: { draft: WorkspaceDr
       setMessage(nextMessage);
       showToast({ message: nextMessage, tone: "error" });
     } finally {
+      actionLock.current = false;
       setIsWorking(false);
     }
   }
 
   const blocked = !isOwner ? "Connect the creator wallet to manage this launch." : !draftMatchesNetwork ? "Switch to the network used when this draft was created." : !configuredClassHash ? "The launch class is not configured for this network." : null;
-  return <aside className="launch-detail__readiness"><p className="app-eyebrow">Creator controls</p><h2>{published ? "Launch live" : funded ? "Publish launch" : contractAddress ? "Fund allocation" : "Deploy contract"}</h2><p>{published ? "This funded launch is visible in Explore." : funded ? "Publish the verified funded contract so participants can discover it." : contractAddress ? "Approve and transfer the full sale allocation into the launch contract." : "Deploy these public sale terms from the connected creator wallet."}</p><ol><li data-complete="true"><i />Terms reviewed</li><li data-complete={Boolean(contractAddress)}><i />Contract deployed</li><li data-complete={funded}><i />Sale allocation funded</li><li data-complete={published}><i />Published to Explore</li></ol>{contractAddress && <code title={contractAddress}>{contractAddress}</code>}{blocked ? <small className="launch-control-message">{blocked}</small> : !published && <button type="button" disabled={isWorking} onClick={() => void (funded ? publish() : contractAddress ? fund() : deploy())}>{isWorking ? "Working…" : funded ? "Publish launch" : contractAddress ? "Fund launch" : "Deploy launch"}<span>→</span></button>}{message && <small className="launch-control-message" role="status">{message}</small>}</aside>;
+  const currentStep = published ? 4 : funded ? 4 : contractAddress ? 3 : 2;
+  return <aside className="launch-detail__readiness"><header><p className="app-eyebrow">{published ? "Status" : "Next action"}</p><span>{published ? "Complete" : `${currentStep} of 4`}</span></header><h2>{published ? "Launch is live" : funded ? "Publish launch" : contractAddress ? "Fund allocation" : "Deploy contract"}</h2><p>{published ? "Participants can now find this sale in Explore. No further setup transaction is required." : funded ? "Publish the funded launch so participants can discover it." : contractAddress ? "Move the offered tokens into the launch contract. Your wallet requests one confirmation for approval and funding." : "Create the Mainnet sale contract using the terms shown here. Your wallet will ask you to review the transaction."}</p><ol><li data-complete="true"><i />Terms reviewed</li><li data-complete={Boolean(contractAddress)}><i />Contract deployed</li><li data-complete={funded}><i />Sale allocation funded</li><li data-complete={published}><i />Published to Explore</li></ol>{contractAddress && <code title={contractAddress}>{contractAddress}</code>}{!published && (blocked ? <small className="launch-control-message">{blocked}</small> : <button type="button" disabled={isWorking} onClick={() => void (funded ? publish() : contractAddress ? fund() : deploy())}>{isWorking ? "Working…" : funded ? "Publish launch" : contractAddress ? "Fund launch" : "Deploy launch"}<span>→</span></button>)}{message && <small className="launch-control-message" role="status">{message}</small>}</aside>;
 }

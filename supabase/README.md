@@ -9,6 +9,8 @@ Supabase stores product metadata and cross-device drafts. Starknet contracts and
 3. Run the migrations in filename order through the Supabase SQL editor or CLI:
    - `migrations/202609030001_product_persistence.sql`
    - `migrations/202609030002_wallet_sessions.sql`
+   - `migrations/202609030003_launch_publication.sql`
+   - `migrations/202609030004_distribution_claims.sql`
 
 The secret key is server-only. Never prefix it with `NEXT_PUBLIC_`.
 

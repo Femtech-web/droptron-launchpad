@@ -2,7 +2,7 @@ use droptron_contracts::launch::{IDroptronLaunchDispatcher, IDroptronLaunchDispa
 use droptron_contracts::launch_participation::{
     ILaunchParticipationDispatcher, ILaunchParticipationDispatcherTrait, OpenNoteDeposit,
 };
-use droptron_contracts::mock_token::{IMockTokenDispatcher, IMockTokenDispatcherTrait};
+use droptron_contracts::mocks::mock_token::{IMockTokenDispatcher, IMockTokenDispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp,
     start_cheat_caller_address, stop_cheat_caller_address,
@@ -116,6 +116,10 @@ fn exact_private_purchase_returns_one_sale_deposit() {
     assert(sale.balance_of(helper.contract_address) == sale_amount.into(), 'BAD_HELPER_SALE');
     assert(payment.balance_of(helper.contract_address) == 0, 'PAYMENT_NOT_SPENT');
     assert(sale.allowance(helper.contract_address, pool) == sale_amount.into(), 'POOL_NOT_APPROVED');
+    assert(
+        payment.allowance(helper.contract_address, launch.contract_address) == 0,
+        'RESIDUAL_LAUNCH_ALLOWANCE',
+    );
 }
 
 #[test]
@@ -156,6 +160,10 @@ fn unused_maximum_payment_is_returned_to_a_private_note() {
     assert(
         payment.allowance(helper.contract_address, pool) == expected_refund.into(),
         'REFUND_NOT_APPROVED',
+    );
+    assert(
+        payment.allowance(helper.contract_address, launch.contract_address) == 0,
+        'RESIDUAL_LAUNCH_ALLOWANCE',
     );
 }
 

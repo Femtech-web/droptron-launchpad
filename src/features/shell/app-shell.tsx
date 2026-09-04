@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { WalletButton } from "@/features/wallet/wallet-button";
 import { NetworkSwitcher } from "@/features/wallet/network-switcher";
 
-function Mark() { return <Image className="app-mark" src="/brand/zamops-icon.svg" alt="" width={22} height={22} priority />; }
+function Mark() { return <Image className="app-mark" src="/brand/droptron-mark.svg" alt="" width={22} height={22} priority />; }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();

@@ -100,7 +100,10 @@ export async function POST(request: NextRequest) {
       if (!adminAddress || !sameAddress(address, adminAddress)) {
         return NextResponse.json({ error: "Token creation will open after the template is registered." }, { status: 409 });
       }
-      const fee = await estimator.estimateDeclareFee({ contract: deploymentArtifacts.contract, casm: deploymentArtifacts.casm });
+      const fee = await estimator.estimateDeclareFee(
+        { contract: deploymentArtifacts.contract, casm: deploymentArtifacts.casm },
+        { skipValidate: true },
+      );
       return NextResponse.json({
         stage: "declare",
         classDeclared,
@@ -126,7 +129,7 @@ export async function POST(request: NextRequest) {
     const saltSeed = `droptron:fixed-token:v1:${address}:${token.name}:${token.symbol}:${token.baseUnits}:${token.decimals}`;
     const deploymentSalt = `0x${hash.starknetKeccak(saltSeed).toString(16)}`;
     const payload = { classHash: deploymentArtifacts.classHash, constructorCalldata, salt: deploymentSalt, unique: true };
-    const fee = await estimator.estimateDeployFee(payload);
+    const fee = await estimator.estimateDeployFee(payload, { skipValidate: true });
     const predictedAddress = defaultDeployer.buildDeployerCall(payload, address).addresses[0];
 
     return NextResponse.json({

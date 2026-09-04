@@ -72,7 +72,10 @@ pub mod DroptronLaunchParticipation {
 
     #[constructor]
     fn constructor(ref self: ContractState, pool_address: ContractAddress) {
-        assert(pool_address.is_non_zero(), errors::INVALID_POOL);
+        assert(
+            pool_address.is_non_zero() && pool_address != get_contract_address(),
+            errors::INVALID_POOL,
+        );
         self.pool_address.write(pool_address);
     }
 
@@ -112,6 +115,9 @@ pub mod DroptronLaunchParticipation {
             assert(payment.approve(launch, maximum), errors::APPROVAL_FAILED);
 
             let reported_payment = launch_contract.buy_exact_sale(requested_sale, maximum);
+            // A quote may use less than the maximum. Do not leave the launch
+            // authorized to spend the helper's refund or future inputs.
+            assert(payment.approve(launch, 0), errors::APPROVAL_FAILED);
             let payment_after = payment.balance_of(helper);
             let sale_after = sale.balance_of(helper);
             let paid = payment_before - payment_after;

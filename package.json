@@ -13,7 +13,11 @@
     "mainnet:contracts:estimate": "node --env-file=.env.local scripts/mainnet-contracts.mjs estimate",
     "mainnet:contracts:declare": "node --env-file=.env.local scripts/mainnet-contracts.mjs declare",
     "mainnet:helper:estimate": "node --env-file=.env.local scripts/mainnet-contracts.mjs estimate-helper participation",
-    "mainnet:helper:deploy": "node --env-file=.env.local scripts/mainnet-contracts.mjs deploy-helper participation"
+    "mainnet:helper:deploy": "node --env-file=.env.local scripts/mainnet-contracts.mjs deploy-helper participation",
+    "mainnet:factory:estimate": "node --env-file=.env.local scripts/mainnet-contracts.mjs estimate-deploy distribution-factory",
+    "mainnet:factory:deploy": "node --env-file=.env.local scripts/mainnet-contracts.mjs deploy distribution-factory",
+    "mainnet:claims:estimate": "node --env-file=.env.local scripts/mainnet-contracts.mjs estimate-deploy claim-redemption",
+    "mainnet:claims:deploy": "node --env-file=.env.local scripts/mainnet-contracts.mjs deploy claim-redemption"
   },
   "dependencies": {
     "@fontsource-variable/instrument-sans": "^5.2.8",

@@ -1,6 +1,6 @@
 use droptron_contracts::launch::{IDroptronLaunchDispatcher, IDroptronLaunchDispatcherTrait};
-use droptron_contracts::mock_token::{IMockTokenDispatcher, IMockTokenDispatcherTrait};
-use droptron_contracts::reentrant_token::{
+use droptron_contracts::mocks::mock_token::{IMockTokenDispatcher, IMockTokenDispatcherTrait};
+use droptron_contracts::mocks::reentrant_token::{
     IReentrantTokenDispatcher, IReentrantTokenDispatcherTrait,
 };
 use snforge_std::{

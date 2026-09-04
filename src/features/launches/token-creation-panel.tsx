@@ -8,6 +8,7 @@ import { formatTokenAmount, MAINNET_DROP_ADDRESS_KEY } from "@/features/wallet/w
 import { networkFromChainId, rpcUrlForChain } from "@/features/wallet/wallet-networks";
 import { useWallet } from "@/features/wallet/wallet-provider";
 import { productErrorMessage } from "@/features/wallet/product-error";
+import { declareReviewedContract } from "@/features/wallet/declare-contract";
 
 type TokenDetails = {
   name: string;
@@ -106,8 +107,6 @@ export function TokenCreationPanel() {
   const [isEstimating, setIsEstimating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [createdAddress, setCreatedAddress] = useState<string | null>(null);
-  const [createdTokens, setCreatedTokens] = useState<CreatedToken[]>([]);
   const isMainnet = networkFromChainId(chainId) === "mainnet";
   const isAdmin = sameAddress(address, ADMIN_ADDRESS);
 
@@ -115,8 +114,6 @@ export function TokenCreationPanel() {
     setEstimate(null);
     setReviewed(false);
     setMessage(null);
-    setCreatedAddress(null);
-    setCreatedTokens(tokensForCreator(address, chainId));
   }, [address, chainId]);
 
   async function requestEstimate() {
@@ -168,12 +165,7 @@ export function TokenCreationPanel() {
 
       const provider = new RpcProvider({ nodeUrl: rpcUrl });
       if (estimate.stage === "declare") {
-        const result = await walletAccount.declare({
-          contract: artifacts.contract,
-          casm: artifacts.casm,
-          classHash: artifacts.classHash,
-          compiledClassHash: artifacts.compiledClassHash,
-        });
+        const result = await declareReviewedContract(walletAccount, artifacts);
         setMessage("Waiting for Mainnet confirmation…");
         await waitForAcceptance(provider, result.transaction_hash);
         setEstimate(null);
@@ -210,13 +202,11 @@ export function TokenCreationPanel() {
       setMessage("Waiting for Mainnet confirmation…");
       await waitForAcceptance(provider, result.transaction_hash);
       rememberToken(token, nextAddress, address, logoUrl.trim(), chainId);
-      setCreatedTokens(tokensForCreator(address, chainId));
       window.dispatchEvent(new CustomEvent("droptron:token-created", { detail: nextAddress }));
       if (isAdmin && token.symbol === "DROP") {
         window.localStorage.setItem(MAINNET_DROP_ADDRESS_KEY, nextAddress);
         window.dispatchEvent(new CustomEvent("droptron:drop-token-deployed", { detail: nextAddress }));
       }
-      setCreatedAddress(nextAddress);
       setEstimate(null);
       setReviewed(false);
       setMessage("Token created and selected for this launch.");
@@ -239,12 +229,6 @@ export function TokenCreationPanel() {
   const declarationPending = estimate?.stage === "declare";
   const canEstimate = Boolean(name.trim() && symbol.trim() && totalSupply.trim());
 
-  function selectCreatedToken(tokenAddress: string) {
-    setCreatedAddress(tokenAddress);
-    window.dispatchEvent(new CustomEvent("droptron:token-created", { detail: tokenAddress }));
-    showToast({ message: "Token selected for this launch.", tone: "success" });
-  }
-
   return <section className="token-creator" aria-labelledby="token-creator-title">
     <header>
       <div><p className="app-eyebrow">Token creator</p><h2 id="token-creator-title">Create a fixed-supply token</h2><p>Set the token details and receive its full supply.</p></div>
@@ -265,8 +249,6 @@ export function TokenCreationPanel() {
       <div><span>Your balance</span><strong>{formatTokenAmount(BigInt(estimate.publicBalance))} STRK</strong></div>
       {estimate.predictedAddress && <div><span>Expected address</span><code>{estimate.predictedAddress}</code></div>}
     </div>}
-    {createdAddress && <div className="token-creator__created"><span>Selected token</span><code>{createdAddress}</code></div>}
-    {createdTokens.length > 0 && <section className="token-creator__tokens" aria-labelledby="your-created-tokens"><header><div><p className="app-eyebrow">Your tokens</p><h3 id="your-created-tokens">Created by this wallet</h3></div><span>{createdTokens.length}</span></header><div>{createdTokens.map((token) => <article key={token.address}><div><strong>{token.symbol}</strong><span>{token.name}</span><code title={token.address}>{token.address}</code></div><button type="button" aria-pressed={sameAddress(createdAddress, token.address)} onClick={() => selectCreatedToken(token.address)}>{sameAddress(createdAddress, token.address) ? "Selected" : "Use token"}</button></article>)}</div></section>}
     <footer>
       <div>
         {estimate && <label className="drop-admin__review"><input type="checkbox" checked={reviewed} onChange={(event) => setReviewed(event.target.checked)} /><span>I reviewed this Mainnet step and fee.</span></label>}
@@ -278,4 +260,63 @@ export function TokenCreationPanel() {
         : <button type="button" onClick={() => void submitStage()} disabled={!reviewed || !enoughBalance || !stageApproved || isSubmitting}>{isSubmitting ? "Waiting for Ready…" : declarationPending ? "Register template" : "Create token"}<span>→</span></button>}
     </footer>
   </section>;
+}
+
+const TOKEN_PAGE_SIZE = 10;
+
+function compactAddress(value: string) {
+  return `${value.slice(0, 9)}…${value.slice(-7)}`;
+}
+
+export function CreatedTokenLibrary({ selectedAddress }: { selectedAddress: string }) {
+  const { address, chainId } = useWallet();
+  const showToast = useToast();
+  const [tokens, setTokens] = useState<CreatedToken[]>([]);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setTokens(tokensForCreator(address, chainId));
+    refresh();
+    window.addEventListener("droptron:token-created", refresh);
+    return () => window.removeEventListener("droptron:token-created", refresh);
+  }, [address, chainId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+
+  if (tokens.length === 0) return null;
+
+  const selected = tokens.find((token) => sameAddress(token.address, selectedAddress)) ?? null;
+  const normalizedQuery = query.trim().toLowerCase();
+  const filtered = tokens.filter((token) => !normalizedQuery || token.name.toLowerCase().includes(normalizedQuery) || token.symbol.toLowerCase().includes(normalizedQuery) || token.address.toLowerCase().includes(normalizedQuery));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / TOKEN_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const visibleTokens = filtered.slice(safePage * TOKEN_PAGE_SIZE, (safePage + 1) * TOKEN_PAGE_SIZE);
+
+  function choose(token: CreatedToken) {
+    window.dispatchEvent(new CustomEvent("droptron:token-created", { detail: token.address }));
+    setOpen(false);
+    showToast({ message: `${token.symbol} selected for this launch.`, tone: "success" });
+  }
+
+  return <>
+    <section className="token-library" aria-label="Your token library">
+      <div><span>Your token library</span>{selected ? <p><strong>{selected.symbol}</strong> {selected.name}<code>{compactAddress(selected.address)}</code></p> : <p>{tokens.length} {tokens.length === 1 ? "token" : "tokens"} created by this wallet</p>}</div>
+      <button type="button" onClick={() => { setQuery(""); setPage(0); setOpen(true); }}>{selected ? "Change token" : "Browse tokens"}<span>→</span></button>
+    </section>
+    {open && <div className="token-library-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="token-library-title">
+        <header><div><p className="app-eyebrow">Token library</p><h2 id="token-library-title">Choose a token</h2></div><button type="button" aria-label="Close token library" onClick={() => setOpen(false)}>×</button></header>
+        <label><span className="sr-only">Search your tokens</span><input autoFocus type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} placeholder="Search by name, symbol, or address" /></label>
+        <div className="token-library-modal__list">{visibleTokens.length > 0 ? visibleTokens.map((token) => <article key={token.address} data-selected={sameAddress(token.address, selectedAddress)}><div><span><strong>{token.symbol}</strong><small>{token.name}</small><code title={token.address}>{compactAddress(token.address)}</code></span></div><button type="button" onClick={() => choose(token)}>{sameAddress(token.address, selectedAddress) ? "Selected" : "Use token"}</button></article>) : <p>No tokens match your search.</p>}</div>
+        <footer><span>{filtered.length} {filtered.length === 1 ? "token" : "tokens"}</span>{pageCount > 1 && <nav aria-label="Token pages"><button type="button" disabled={safePage === 0} onClick={() => setPage((current) => Math.max(0, current - 1))}>←</button><span>{safePage + 1} / {pageCount}</span><button type="button" disabled={safePage === pageCount - 1} onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}>→</button></nav>}</footer>
+      </section>
+    </div>}
+  </>;
 }

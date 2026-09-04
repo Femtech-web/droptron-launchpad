@@ -1,15 +1,44 @@
 import { readFile } from "node:fs/promises";
 import { Account, RpcProvider, constants, hash } from "starknet";
+import { checkedSubmissionDetails } from "./deployment-safety.mjs";
 
 const mode = process.argv[2] ?? "estimate";
 const selectedTarget = process.argv[3] ?? "all";
-const allowedModes = new Set(["estimate", "declare", "estimate-helper", "deploy-helper"]);
-const allowedTargets = new Set(["all", "token", "launch", "participation"]);
+const allowedModes = new Set([
+  "estimate",
+  "declare",
+  "estimate-helper",
+  "deploy-helper",
+  "estimate-deploy",
+  "deploy",
+]);
+const allowedTargets = new Set([
+  "all",
+  "token",
+  "launch",
+  "participation",
+  "claim-series",
+  "distribution-factory",
+  "claim-redemption",
+]);
 
 if (!allowedModes.has(mode) || !allowedTargets.has(selectedTarget)) {
   throw new Error(
-    "Usage: mainnet-contracts.mjs <estimate|declare|estimate-helper|deploy-helper> [all|token|launch|participation]",
+    "Usage: mainnet-contracts.mjs <estimate|declare|estimate-helper|deploy-helper|estimate-deploy|deploy> [target]",
   );
+}
+if (mode === "declare" && selectedTarget === "all") {
+  throw new Error("Select one reviewed class for declaration; bulk Mainnet spending is disabled.");
+}
+
+function submissionDetails(expectedApproval, fee, nonce) {
+  return checkedSubmissionDetails({
+    expectedApproval,
+    approval: process.env.MAINNET_DEPLOYMENT_APPROVAL,
+    maxFeeStrk: process.env.MAINNET_MAX_FEE_STRK,
+    fee,
+    nonce,
+  });
 }
 
 const rpcUrl = process.env.NEXT_PUBLIC_STARKNET_MAINNET_RPC_URL;
@@ -37,6 +66,17 @@ const definitions = [
     id: "participation",
     label: "Private participation helper",
     artifact: "DroptronLaunchParticipation",
+  },
+  { id: "claim-series", label: "Funded claim series", artifact: "DroptronClaimSeries" },
+  {
+    id: "distribution-factory",
+    label: "Distribution factory",
+    artifact: "DroptronDistributionFactory",
+  },
+  {
+    id: "claim-redemption",
+    label: "Private claim helper",
+    artifact: "DroptronClaimRedemption",
   },
 ];
 
@@ -95,35 +135,61 @@ const contracts = await Promise.all(definitionsToLoad.map(loadDefinition));
 console.log(`Mainnet account: ${address}`);
 console.log(`STRK20 pool: ${poolAddress}`);
 
-if (mode === "estimate-helper" || mode === "deploy-helper") {
-  if (selectedTarget !== "all" && selectedTarget !== "participation") {
-    throw new Error("Helper deployment only supports the participation target.");
+if (["estimate-helper", "deploy-helper", "estimate-deploy", "deploy"].includes(mode)) {
+  const deploymentTarget = selectedTarget === "all" ? "participation" : selectedTarget;
+  if (!["participation", "distribution-factory", "claim-redemption"].includes(deploymentTarget)) {
+    throw new Error("Deployable infrastructure targets: participation, distribution-factory, claim-redemption.");
   }
   const helper =
-    contracts.find(({ id }) => id === "participation") ??
-    (await loadDefinition(definitions.find(({ id }) => id === "participation")));
+    contracts.find(({ id }) => id === deploymentTarget) ??
+    (await loadDefinition(definitions.find(({ id }) => id === deploymentTarget)));
   if (!(await classExists(provider, helper.classHash))) {
-    throw new Error(
-      "Declare the reviewed private participation helper before estimating its deployment.",
-    );
+    throw new Error(`Declare the reviewed ${helper.label} class before estimating deployment.`);
   }
+  let constructorCalldata;
+  if (deploymentTarget === "participation") {
+    constructorCalldata = [poolAddress];
+  } else if (deploymentTarget === "distribution-factory") {
+    const series = await loadDefinition(definitions.find(({ id }) => id === "claim-series"));
+    if (!(await classExists(provider, series.classHash))) {
+      throw new Error("Declare the reviewed claim-series class before deploying its factory.");
+    }
+    constructorCalldata = [series.classHash];
+  } else {
+    const factoryAddress = process.env.NEXT_PUBLIC_MAINNET_DISTRIBUTION_FACTORY_ADDRESS;
+    if (!factoryAddress) throw new Error("Missing NEXT_PUBLIC_MAINNET_DISTRIBUTION_FACTORY_ADDRESS.");
+    const factory = await loadDefinition(definitions.find(({ id }) => id === "distribution-factory"));
+    const deployedClass = await provider.getClassHashAt(factoryAddress);
+    if (BigInt(deployedClass) !== BigInt(factory.classHash)) {
+      throw new Error("Configured distribution factory is not the reviewed factory class.");
+    }
+    constructorCalldata = [poolAddress, factoryAddress];
+  }
+  const constructorBinding = constructorCalldata.join(":");
   const payload = {
     classHash: helper.classHash,
-    constructorCalldata: [poolAddress],
+    constructorCalldata,
     unique: true,
+    salt: hash.starknetKeccak(
+      `droptron:${deploymentTarget}:${address}:${constructorBinding}:${helper.classHash}`,
+    ),
   };
-  const fee = await account.estimateDeployFee(payload);
-  console.log(`Private participation helper class: ${helper.classHash}`);
-  console.log(`Estimated helper deployment fee: ${formatStrk(fee.overall_fee)} STRK`);
-  console.log(`Constructor pool: ${poolAddress}`);
-  if (mode === "estimate-helper") {
+  const nonce = await account.getNonce();
+  const fee = await account.estimateDeployFee(payload, { skipValidate: false, nonce, tip: 0n });
+  console.log(`${helper.label} class: ${helper.classHash}`);
+  console.log(`Estimated deployment fee: ${formatStrk(fee.overall_fee)} STRK`);
+  console.log(`Constructor binding: ${constructorBinding}`);
+  if (mode === "estimate-helper" || mode === "estimate-deploy") {
     console.log("Estimate only. No transaction was submitted.");
     process.exit(0);
   }
-  const deployment = await account.deployContract(payload);
+  const deployment = await account.deployContract(
+    payload,
+    submissionDetails(`deploy:${helper.classHash}:${constructorBinding}`, fee, nonce),
+  );
   console.log(`Helper deployment submitted: ${deployment.transaction_hash}`);
   await provider.waitForTransaction(deployment.transaction_hash);
-  console.log(`Private participation helper deployed: ${deployment.address}`);
+  console.log(`${helper.label} deployed: ${deployment.address}`);
   process.exit(0);
 }
 
@@ -138,11 +204,17 @@ for (const contract of contracts) {
     continue;
   }
   const payload = { contract: contract.contract, casm: contract.casm };
-  const fee = await account.estimateDeclareFee(payload);
+  // The SDK defaults to skipping account validation for estimates. Mainnet
+  // preflight must prove this signer is accepted by the actual account.
+  const nonce = await account.getNonce();
+  const fee = await account.estimateDeclareFee(payload, { skipValidate: false, nonce, tip: 0n });
   totalEstimatedFee += BigInt(fee.overall_fee);
   console.log(`Estimated declaration fee: ${formatStrk(fee.overall_fee)} STRK`);
   if (mode === "declare") {
-    const declaration = await account.declare(payload);
+    const declaration = await account.declare(
+      payload,
+      submissionDetails(`declare:${contract.classHash}`, fee, nonce),
+    );
     console.log(`Declaration submitted: ${declaration.transaction_hash}`);
     await provider.waitForTransaction(declaration.transaction_hash);
     console.log(`Declared class: ${declaration.class_hash}`);

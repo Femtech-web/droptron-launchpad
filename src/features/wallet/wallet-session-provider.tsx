@@ -14,6 +14,7 @@ import { num, type Signature, type TypedData } from "starknet";
 
 import { useToast } from "@/features/feedback/toast-provider";
 import { productErrorMessage } from "./product-error";
+import { networkFromChainId } from "./wallet-networks";
 import { useWallet } from "./wallet-provider";
 
 type SessionStatus = "idle" | "checking" | "unsigned" | "signing" | "synced" | "unavailable";
@@ -68,9 +69,10 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
       const { session } = await response.json() as {
         session: { chainId: string; walletAddress: string } | null;
       };
-      const normalizedChain = chainId.replace(/^starknet:/i, "").toUpperCase();
       setStatus(
-        session && session.chainId === normalizedChain && sameAddress(session.walletAddress, address)
+        session
+          && networkFromChainId(session.chainId) === networkFromChainId(chainId)
+          && sameAddress(session.walletAddress, address)
           ? "synced"
           : "unsigned",
       );

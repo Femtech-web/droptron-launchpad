@@ -165,7 +165,7 @@ pub mod DroptronLaunch {
         starts_at: u64,
         ends_at: u64,
     ) {
-        assert(owner.is_non_zero(), errors::OWNER_ONLY);
+        assert(owner.is_non_zero() && owner != get_contract_address(), errors::OWNER_ONLY);
         assert(sale_token.is_non_zero(), errors::INVALID_TOKEN);
         assert(payment_token.is_non_zero(), errors::INVALID_TOKEN);
         assert(sale_token != payment_token, errors::SAME_TOKEN);
@@ -277,8 +277,7 @@ pub mod DroptronLaunch {
                 let amount = self.sale_allocation_raw.read();
                 self.enter();
                 self.sale_recovered.write(amount);
-                let token = IERC20Dispatcher { contract_address: self.sale_token.read() };
-                assert(token.transfer(self.owner.read(), amount), errors::TRANSFER_FAILED);
+                self.send_exact(self.sale_token.read(), self.owner.read(), amount);
                 self.exit();
                 self.emit(UnsoldRecovered { amount });
             }
@@ -292,8 +291,7 @@ pub mod DroptronLaunch {
             assert(amount != 0, errors::NOTHING_TO_WITHDRAW);
             self.enter();
             self.proceeds_withdrawn.write(self.raised.read());
-            let token = IERC20Dispatcher { contract_address: self.payment_token.read() };
-            assert(token.transfer(self.owner.read(), amount), errors::TRANSFER_FAILED);
+            self.send_exact(self.payment_token.read(), self.owner.read(), amount);
             self.exit();
             self.emit(ProceedsWithdrawn { amount });
             amount
@@ -308,8 +306,7 @@ pub mod DroptronLaunch {
             assert(amount != 0, errors::NOTHING_TO_RECOVER);
             self.enter();
             self.sale_recovered.write(self.sale_recovered.read() + amount);
-            let token = IERC20Dispatcher { contract_address: self.sale_token.read() };
-            assert(token.transfer(self.owner.read(), amount), errors::TRANSFER_FAILED);
+            self.send_exact(self.sale_token.read(), self.owner.read(), amount);
             self.exit();
             self.emit(UnsoldRecovered { amount });
             amount
@@ -414,6 +411,19 @@ pub mod DroptronLaunch {
 
         fn exit(ref self: ContractState) {
             self.entered.write(false);
+        }
+
+        fn send_exact(
+            self: @ContractState, token_address: ContractAddress, recipient: ContractAddress,
+            amount: u256,
+        ) {
+            let token = IERC20Dispatcher { contract_address: token_address };
+            let here = get_contract_address();
+            let contract_before = token.balance_of(here);
+            let recipient_before = token.balance_of(recipient);
+            assert(token.transfer(recipient, amount), errors::TRANSFER_FAILED);
+            assert(contract_before - token.balance_of(here) == amount, errors::TRANSFER_FAILED);
+            assert(token.balance_of(recipient) - recipient_before == amount, errors::TRANSFER_FAILED);
         }
 
         fn is_closed(self: @ContractState) -> bool {

@@ -10,6 +10,7 @@ import { loadDrafts, saveDraft, type WorkspaceDraft } from "@/features/workspace
 import { WalletGate } from "@/features/wallet/wallet-gate";
 import { useWallet } from "@/features/wallet/wallet-provider";
 import { useWalletSession } from "@/features/wallet/wallet-session-provider";
+import { loadPublicLaunches } from "@/features/launches/public-launch-store";
 
 import { DISTRIBUTION_TYPES, type DistributionKind } from "./distribution-types";
 
@@ -59,7 +60,7 @@ function validKind(value: string | null): DistributionKind {
 }
 
 export function DistributionBuilder() {
-  const { address } = useWallet();
+  const { address, chainId } = useWallet();
   const { status: sessionStatus, syncWorkspace } = useWalletSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -79,11 +80,24 @@ export function DistributionBuilder() {
 
   useEffect(() => {
     let active = true;
-    void loadDrafts("droptron.launches.v1", sessionStatus === "synced").then((items) => {
-      if (active) setLaunches(items);
+    void Promise.all([
+      loadDrafts("droptron.launches.v1", sessionStatus === "synced"),
+      loadPublicLaunches().catch(() => []),
+    ]).then(([drafts, published]) => {
+      if (!active) return;
+      const ownedPublished = published.filter((item) => {
+        try { return Boolean(address && item.values?.owner) && BigInt(item.values!.owner) === BigInt(address!); } catch { return false; }
+      });
+      const seen = new Set<string>();
+      setLaunches([...drafts, ...ownedPublished].filter((item) => {
+        const key = item.values?.contractAddress ? BigInt(item.values.contractAddress).toString() : item.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }));
     });
     return () => { active = false; };
-  }, [sessionStatus]);
+  }, [address, sessionStatus]);
 
   if (!address) return <WalletGate />;
 
@@ -127,9 +141,13 @@ export function DistributionBuilder() {
 
     const startsAt = String(data.get("startsAt") ?? "");
     const endsAt = String(data.get("endsAt") ?? "");
-    if (kind === "airdrop" && (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt))) return setFormError("Choose a valid claim window.");
+    if (kind === "airdrop" && (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt) || new Date(endsAt).getTime() <= Date.now())) return setFormError("Choose a valid future claim window.");
     const firstUnlock = String(data.get("firstUnlock") ?? "");
     if (kind === "vesting" && !firstUnlock) return setFormError("Choose the first unlock date.");
+    const trancheCount = Number(data.get("tranches") ?? 0);
+    if (kind === "vesting" && (!Number.isInteger(trancheCount) || trancheCount < 1 || trancheCount > 24)) return setFormError("Choose between 1 and 24 tranches.");
+    const initialUnlock = Number(data.get("initialUnlock") ?? 0);
+    if (kind === "vesting" && trancheCount > 1 && initialUnlock >= 100) return setFormError("With multiple tranches, the first unlock must be less than 100%.");
 
     const name = String(data.get("name") ?? "").trim();
     const values = Object.fromEntries(Array.from(data.entries(), ([key, value]) => [key, String(value).trim()]));
@@ -139,7 +157,7 @@ export function DistributionBuilder() {
       id: crypto.randomUUID(),
       title: name,
       detail: `${DISTRIBUTION_TYPES.find((item) => item.kind === kind)?.label} · ${recipients.recipients.length} recipient${recipients.recipients.length === 1 ? "" : "s"}`,
-      values: { ...values, kind, source, sourceLaunchId: selectedLaunch, token, recipients: JSON.stringify(recipients.recipients), total: total ?? "" },
+      values: { ...values, kind, source, sourceLaunchId: selectedLaunch, token, recipients: JSON.stringify(recipients.recipients), total: total ?? "", owner: address ?? "", chainId: chainId ?? "" },
       createdAt: new Date().toISOString(),
     };
     const syncEnabled = sessionStatus === "synced" || await syncWorkspace();
@@ -150,7 +168,7 @@ export function DistributionBuilder() {
         : "Saved on this device. Sign later to sync.",
       tone: result.synced ? "success" : "info",
     });
-    router.push("/app/distributions");
+    router.push(`/app/distributions/${draft.id}`);
   }
 
   return <main className="builder-workspace distribution-builder" id="main-content" tabIndex={-1}>
@@ -171,7 +189,7 @@ export function DistributionBuilder() {
         <div className="recipient-batch-note builder-field--wide"><span aria-hidden="true">↗</span><div><strong>Batch confirmation</strong><p>{kind === "disperse" ? "At execution, transfers will use one wallet confirmation. Droptron will split only if network limits require it." : "At execution, recipient allocations will be committed together—not confirmed one address at a time."}</p></div></div>
       </div></section>
       {kind === "airdrop" && <section className="distribution-form-section"><header><div><h2>Claim window</h2><p>Recipients can claim only while this window is open.</p></div></header><div className="builder-form__fields"><FormDateTimeField name="startsAt" label="Claims open" required /><FormDateTimeField name="endsAt" label="Claims close" required /><label className="builder-field--wide"><span>Unclaimed tokens return to<FieldHelp label="Unclaimed tokens return to" help="This address receives any tokens left after the claim window closes." /></span><input name="refundAddress" placeholder={address ?? "0x…"} defaultValue={address ?? ""} /></label></div></section>}
-      {kind === "vesting" && <section className="distribution-form-section"><header><div><h2>Unlock schedule</h2><p>Tokens become claimable in separate scheduled portions.</p></div></header><div className="builder-form__fields"><FormDateTimeField name="firstUnlock" label="First unlock" help="When the first portion becomes available to claim." required /><FormSelectField name="cadence" label="Cadence" help="How often another portion becomes available." defaultValue="monthly" options={[{ value: "weekly", label: "Weekly" }, { value: "monthly", label: "Monthly" }]} required /><label><span>Number of tranches<i>*</i><FieldHelp label="Number of tranches" help="How many separate portions the allocation is divided into." /></span><input name="tranches" type="number" min="1" max="120" defaultValue="12" required /></label><label><span>Initial unlock %<FieldHelp label="Initial unlock percentage" help="The percentage available at the first unlock." /></span><input name="initialUnlock" type="number" min="0" max="100" defaultValue="0" /></label></div></section>}
+      {kind === "vesting" && <section className="distribution-form-section"><header><div><h2>Unlock schedule</h2><p>Tokens become claimable in separate scheduled portions.</p></div></header><div className="builder-form__fields"><FormDateTimeField name="firstUnlock" label="First unlock" help="When the first portion becomes available to claim." required /><FormSelectField name="cadence" label="Cadence" help="How often another portion becomes available." defaultValue="monthly" options={[{ value: "weekly", label: "Weekly" }, { value: "monthly", label: "Monthly" }]} required /><label><span>Number of tranches<i>*</i><FieldHelp label="Number of tranches" help="How many separate portions the allocation is divided into. Droptron supports up to 24." /></span><input name="tranches" type="number" min="1" max="24" defaultValue="12" required /></label><label><span>Initial unlock %<FieldHelp label="Initial unlock percentage" help="The percentage available at the first unlock. With multiple tranches, keep this below 100%." /></span><input name="initialUnlock" type="number" min="0" max="99" defaultValue="0" /></label></div></section>}
       <footer><div><p>Save this draft to your wallet workspace. No funds move yet.</p>{formError && <p className="builder-form__error" role="alert">{formError}</p>}</div><button type="submit" disabled={isSaving}>{isSaving ? "Saving…" : "Review draft"} <span>→</span></button></footer>
     </form>
   </main>;

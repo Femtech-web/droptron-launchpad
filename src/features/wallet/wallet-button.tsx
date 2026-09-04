@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { networkLabel } from "./wallet-identity";
 import { useWallet } from "./wallet-provider";
@@ -22,6 +22,23 @@ export function WalletButton() {
   } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const controlRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const dismissOutside = (event: PointerEvent) => {
+      if (!controlRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const dismissWithKeyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("pointerdown", dismissOutside);
+    document.addEventListener("keydown", dismissWithKeyboard);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside);
+      document.removeEventListener("keydown", dismissWithKeyboard);
+    };
+  }, [isOpen]);
 
   async function copyAddress() {
     if (!address) return;
@@ -32,7 +49,7 @@ export function WalletButton() {
 
   if (address) {
     return (
-      <div className="wallet-control">
+      <div className="wallet-control" ref={controlRef}>
         <button
           className="wallet-button wallet-button--connected"
           type="button"
@@ -73,7 +90,7 @@ export function WalletButton() {
   }
 
   return (
-    <div className="wallet-control">
+    <div className="wallet-control" ref={controlRef}>
       <button
         className="wallet-button"
         type="button"

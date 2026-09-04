@@ -17,6 +17,7 @@ import {
 import { useToast } from "@/features/feedback/toast-provider";
 import {
   DROPTON_NETWORKS,
+  networkFromChainId,
   rpcUrlForChain,
   type DroptronNetwork,
 } from "./wallet-networks";
@@ -57,10 +58,18 @@ function supportsPrivacyWallet(versions: readonly string[]) {
   });
 }
 
+function walletIdentity(address: string, chainId: string | null) {
+  let canonicalAddress = address.toLowerCase();
+  try { canonicalAddress = `0x${BigInt(address).toString(16)}`; } catch { /* Keep the wallet value. */ }
+  const canonicalChain = networkFromChainId(chainId) ?? chainId?.replace(/^starknet:/, "") ?? "";
+  return `${canonicalAddress}:${canonicalChain}`;
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const showToast = useToast();
   const storeRef = useRef<Store | null>(null);
   const hasAttemptedRestoreRef = useRef(false);
+  const walletIdentityRef = useRef<string | null>(null);
   const [wallets, setWallets] = useState<readonly WalletWithStarknetFeatures[]>(
     []
   );
@@ -88,6 +97,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(() => {
     window.localStorage.removeItem(LAST_WALLET_KEY);
+    walletIdentityRef.current = null;
     setAddress(null);
     setChainId(null);
     setWalletName(null);
@@ -144,9 +154,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           throw new Error("No account was shared by the wallet.");
 
         setAddress(nextAddress);
-        setChainId(
-          nextChain ? String(nextChain).replace(/^starknet:/, "") : null
-        );
+        const normalizedChain = nextChain ? String(nextChain).replace(/^starknet:/, "") : null;
+        setChainId(normalizedChain);
+        walletIdentityRef.current = walletIdentity(nextAddress, normalizedChain);
         setWalletName(wallet.name);
         setActiveWallet(wallet);
         window.localStorage.setItem(LAST_WALLET_KEY, wallet.name);
@@ -213,9 +223,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         /^starknet:/,
         ""
       );
+      const nextIdentity = walletIdentity(account.address, nextChain);
+      const identityChanged = walletIdentityRef.current !== null
+        && walletIdentityRef.current !== nextIdentity;
+      walletIdentityRef.current = nextIdentity;
       setAddress(account.address);
       setChainId(nextChain || null);
       setNetworkError(null);
+      if (identityChanged) setConnectionRequestId((value) => value + 1);
       void connectPrivacyAccount(
         v6Wallet,
         nextChain,
@@ -243,6 +258,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (!changed) throw new Error("The wallet did not switch networks.");
         const nextChain = String(await walletV6.requestChainId(v6Wallet));
         setChainId(nextChain);
+        if (address) {
+          const nextIdentity = walletIdentity(address, nextChain);
+          if (walletIdentityRef.current !== nextIdentity) {
+            walletIdentityRef.current = nextIdentity;
+            setConnectionRequestId((value) => value + 1);
+          }
+        }
         await connectPrivacyAccount(
           v6Wallet,
           nextChain,
@@ -260,7 +282,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setIsSwitchingNetwork(false);
       }
     },
-    [activeWallet, connectPrivacyAccount, privacyStatus, showToast]
+    [activeWallet, address, connectPrivacyAccount, privacyStatus, showToast]
   );
 
   const value = useMemo<WalletContextValue>(

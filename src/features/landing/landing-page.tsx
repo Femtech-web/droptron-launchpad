@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import styles from "@/app/page.module.css";
 
-function Mark() { return <Image className={styles.mark} src="/brand/zamops-icon.svg" alt="" width={22} height={22} priority />; }
+function Mark() { return <Image className={styles.mark} src="/brand/droptron-mark.svg" alt="" width={22} height={22} priority />; }
 function Arrow() { return <span className={styles.arrow} aria-hidden="true">→</span>; }
 
 export function LandingPage() {
@@ -14,7 +14,7 @@ export function LandingPage() {
       <header className={styles.header}>
         <nav className={styles.nav} aria-label="Primary navigation">
           <a className={styles.brand} href="#top"><Mark /> droptron</a>
-          <div className={styles.navLinks}><a href="#product">Product</a><a href="#privacy">Privacy</a><a href="#teams">For teams</a></div>
+          <div className={styles.navLinks}><a href="#product">Product</a><a href="#privacy">Privacy</a><Link href="/docs">Docs</Link></div>
           <Link className={styles.navAction} href="/app">Launch app <Arrow /></Link>
         </nav>
       </header>
@@ -23,7 +23,7 @@ export function LandingPage() {
           <p className={styles.eyebrow}>Private token launches on Starknet</p>
           <h1>Launch in public.<br /><span>Participate in private.</span></h1>
           <p>Droptron is the private operating layer for token launches: shielded allocations, confidential distribution, private airdrop claims, and scheduled vesting on STRK20.</p>
-          <div><Link className={styles.primary} href="/app">Launch app <Arrow /></Link><a className={styles.secondary} href="#privacy">Understand the privacy model <span>↓</span></a></div>
+          <div><Link className={styles.primary} href="/app">Launch app <Arrow /></Link><Link className={styles.secondary} href="/docs">Read the docs <Arrow /></Link></div>
         </section>
         <section className={styles.statement} id="product">
           <div className={styles.statementVisual} aria-hidden="true"><div className={styles.launchAura} /><div className={styles.launchCard}><span>Public launch</span><strong>Open to the market</strong><i /></div><div className={styles.routeCard}><span>Private allocation route</span><strong>Shielded from entry to claim</strong><div><b /> <i /> <b /> <i /> <b /></div></div></div>
@@ -46,8 +46,8 @@ export function LandingPage() {
           <div><article><span>Wallet-held privacy</span><h3>The app never holds a user’s viewing key.</h3><p>Users act through their privacy-enabled wallet. Keys, private notes, and proof generation remain where they belong.</p></article><article><span>Honest transaction surface</span><h3>Public market data stays public.</h3><p>Price, launch activity, and contract configuration remain visible; the participant’s ownership path is what becomes private.</p></article></div>
         </section>
         <section className={styles.privacy} id="privacy">
-          <div className={styles.privacyIntro}><p className={styles.eyebrow}>Clear by design</p><h2>Know the boundary before you cross it.</h2><p>Droptron makes the public market surface and the private ownership route legible before a user signs anything.</p><a href="#faq">Read the privacy model <Arrow /></a></div>
-          <div className={styles.privacyVisual}><div className={styles.privacyGlow} /><div className={styles.privacyPanel}><header><span>Droptron privacy model</span><i>01</i></header><section><p><b>Private</b><span>Participant identity, entitlement ownership, and shielded balances.</span></p><p><b>Public</b><span>Launch price, market activity, and contract configuration.</span></p></section><footer>Private does not mean invisible. It removes the public link between a participant and their allocation route.</footer></div></div>
+          <div className={styles.privacyIntro}><p className={styles.eyebrow}>Clear by design</p><h2>Know the boundary before you cross it.</h2><p>Droptron makes the public market surface and the private ownership route legible before a user signs anything.</p><Link href="/docs#privacy">Read the privacy model <Arrow /></Link></div>
+          <div className={styles.privacyVisual}><div className={styles.privacyGlow} /><div className={styles.privacyPanel}><header><span>Droptron privacy model</span></header><section><p><b>Private</b><span>Participant identity, entitlement ownership, and shielded balances.</span></p><p><b>Public</b><span>Launch price, market activity, and contract configuration.</span></p></section></div></div>
         </section>
         <section className={styles.faq} aria-labelledby="faq-heading">
           <header><p className={styles.eyebrow}>Questions, answered plainly</p><h2 id="faq-heading">Privacy should be easy to understand.</h2></header>
@@ -60,7 +60,7 @@ export function LandingPage() {
         </section>
         <section className={styles.teams} id="teams"><div><p className={styles.eyebrow}>For launch teams</p><h2>Build a better<br />distribution moment.</h2><p>Bring participation, allocations, airdrops, and vesting into one private launch surface.</p></div><a href="mailto:hello@droptron.app">Talk to Droptron <Arrow /></a></section>
       </main>
-      <footer className={styles.footer}><a className={styles.brand} href="#top"><Mark /> droptron</a><p>Private launch infrastructure on Starknet.</p><a href="https://strk20-by-example.org/what-is-strk20" target="_blank" rel="noreferrer">Built with STRK20 ↗</a></footer>
+      <footer className={styles.footer}><a className={styles.brand} href="#top"><Mark /> droptron</a><p>Private launch infrastructure on Starknet.</p><div><Link href="/docs">Docs</Link><a href="https://strk20-by-example.org/what-is-strk20" target="_blank" rel="noreferrer">Built with STRK20 ↗</a></div></footer>
     </div>
   );
 }

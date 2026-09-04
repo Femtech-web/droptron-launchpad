@@ -49,6 +49,29 @@ async function waitForPublicBalanceIncrease(
   throw new Error("Wallet response timed out after submission.");
 }
 
+async function waitForPublicBalanceDecrease(
+  provider: RpcProvider,
+  token: string,
+  account: string,
+  initialBalance: bigint,
+  expectedDecrease: bigint,
+  cancelled: () => boolean,
+) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 4_000));
+    if (cancelled()) throw new Error("Balance watch cancelled.");
+    try {
+      const currentBalance = await readPublicTokenBalance(provider, token, account);
+      if (initialBalance >= expectedDecrease && currentBalance <= initialBalance - expectedDecrease) {
+        return { confirmedByBalance: true as const };
+      }
+    } catch {
+      // A transient RPC read should not interrupt a wallet request.
+    }
+  }
+  throw new Error("Wallet response timed out after submission.");
+}
+
 const actionCopy: Record<ActionKind, { title: string; description: string; button: string }> = {
   deposit: { title: "Shield funds", description: "Move a public token balance into STRK20.", button: "Shield funds" },
   transfer: { title: "Private transfer", description: "Send shielded funds to a registered STRK20 recipient.", button: "Send privately" },
@@ -59,22 +82,28 @@ export function PrivateActionPanel({
   defaultToken = "",
   defaultKind = "deposit",
   tokenLabel,
+  defaultAmount = "",
+  notice,
   availableBalance,
   modal = false,
   onClose,
+  onSubmitted,
 }: {
   defaultToken?: string;
   defaultKind?: ActionKind;
   tokenLabel?: string;
+  defaultAmount?: string;
+  notice?: string;
   availableBalance?: bigint;
   modal?: boolean;
   onClose?: () => void;
+  onSubmitted?: () => void;
 }) {
   const { address, chainId, privacyStatus, walletAccount } = useWallet();
   const showToast = useToast();
   const [kind, setKind] = useState<ActionKind>(defaultKind);
   const [token, setToken] = useState(defaultToken);
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(defaultAmount);
   const [tokenDetails, setTokenDetails] = useState<TokenDetails | null>(() => knownTokenDetails(defaultToken));
   const [isReadingToken, setIsReadingToken] = useState(false);
   const [recipient, setRecipient] = useState("");
@@ -180,7 +209,7 @@ export function PrivateActionPanel({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submissionLock.current || !walletAccount || !canSubmit) return;
+    if (submissionLock.current || !walletAccount || !address || !canSubmit) return;
     submissionLock.current = true;
     setIsSubmitting(true);
     const requestId = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}`;
@@ -199,18 +228,21 @@ export function PrivateActionPanel({
           : { type: "withdraw", token: walletToken, amount: walletAmount, recipient: num.toHex(BigInt(walletRecipient || "")) };
       const withdrawalRecipient = num.toHex(BigInt(walletRecipient || ""));
       const rpcUrl = rpcUrlForChain(chainId);
-      const provider = kind === "withdraw" && rpcUrl ? new RpcProvider({ nodeUrl: rpcUrl }) : null;
-      let initialRecipientBalance: bigint | null = null;
+      const provider = (kind === "withdraw" || kind === "deposit") && rpcUrl ? new RpcProvider({ nodeUrl: rpcUrl }) : null;
+      const watchedAccount = kind === "deposit" ? num.toHex(BigInt(address)) : withdrawalRecipient;
+      let initialWatchedBalance: bigint | null = null;
       if (provider) {
         try {
-          initialRecipientBalance = await readPublicTokenBalance(provider, walletToken, withdrawalRecipient);
+          initialWatchedBalance = await readPublicTokenBalance(provider, walletToken, watchedAccount);
         } catch (error) {
-          console.warn("[Droptron STRK20] withdrawal balance fallback unavailable", error);
+          console.warn("[Droptron STRK20] public balance fallback unavailable", { kind, error });
         }
       }
       const walletRequest = submitPrivateActions(walletAccount, [action]);
-      const balanceFallback = provider && initialRecipientBalance !== null
-        ? waitForPublicBalanceIncrease(provider, walletToken, withdrawalRecipient, initialRecipientBalance, () => cancelBalanceWatch)
+      const balanceFallback = provider && initialWatchedBalance !== null
+        ? kind === "deposit"
+          ? waitForPublicBalanceDecrease(provider, walletToken, watchedAccount, initialWatchedBalance, amountInUnits, () => cancelBalanceWatch)
+          : waitForPublicBalanceIncrease(provider, walletToken, watchedAccount, initialWatchedBalance, () => cancelBalanceWatch)
         : null;
       const result = balanceFallback
         ? await Promise.race([walletRequest, balanceFallback])
@@ -223,8 +255,9 @@ export function PrivateActionPanel({
       window.dispatchEvent(new CustomEvent("droptron:private-action-submitted", {
         detail: { kind, transactionHash },
       }));
+      onSubmitted?.();
       const message = kind === "deposit"
-        ? "Shield submitted. Your private balance will update after the note matures."
+        ? "Shield submitted. Your private balance will update after the note matures. Reject any wallet prompt that repeats this same Shield request."
         : kind === "transfer"
           ? "Private transfer submitted. The new note may take several blocks to appear."
           : "Unshield submitted. Your balances will refresh automatically.";
@@ -282,7 +315,7 @@ export function PrivateActionPanel({
     } catch (caught) {
       console.error("[Droptron STRK20] max balance request failed", { kind, error: caught });
       showToast({
-        message: kind === "deposit" ? "Your public balance could not be loaded." : "Ready could not load your private balance.",
+        message: kind === "deposit" ? "Your public balance could not be loaded." : "Your wallet could not load your private balance.",
         tone: "error",
       });
     } finally {
@@ -296,11 +329,12 @@ export function PrivateActionPanel({
       {!modal && <div className="action-tabs" role="tablist" aria-label="Private action"><button type="button" role="tab" aria-selected={kind === "deposit"} onClick={() => setKind("deposit")}>Shield</button><button type="button" role="tab" aria-selected={kind === "transfer"} onClick={() => setKind("transfer")}>Transfer</button><button type="button" role="tab" aria-selected={kind === "withdraw"} onClick={() => setKind("withdraw")}>Unshield</button></div>}
       <form onSubmit={submit}>
         <p className="action-description">{actionCopy[kind].description}</p>
+        {notice && <p className="private-actions__notice">{notice}</p>}
         {tokenLabel ? <div className="selected-action-asset"><span>Asset</span><strong>{tokenLabel}</strong></div> : <label><span>Token address</span><input value={token} onChange={(event) => setToken(event.target.value.trim())} placeholder="0x…" inputMode="text" required /></label>}
         <label><span>Amount</span><div className="amount-input"><input autoFocus={modal} value={amount} onChange={(event) => { const next = event.target.value; if (/^\d*(?:\.\d*)?$/.test(next)) setAmount(next); }} placeholder="0.0" inputMode="decimal" required /><button type="button" onClick={() => void fillMax()} disabled={isMaxLoading || isReadingToken || !tokenDetails}>{isMaxLoading ? "…" : "Max"}</button></div>{token && !isReadingToken && !tokenDetails && <small className="action-hint">Enter a valid token amount.</small>}{isStrkAction && poolFee !== null && <small className={feeBlocksShield || knownBalanceBlocksAction ? "action-hint action-hint--error" : "action-hint"}>{knownBalanceBlocksAction && kind !== "deposit" && amountInUnits !== null && availableBalance !== undefined ? `${formatTokenAmount(amountInUnits)} STRK + ${formatTokenAmount(poolFee)} STRK fee exceeds your ${formatTokenAmount(availableBalance)} STRK private balance.` : `Private actions require the current ${formatTokenAmount(poolFee)} STRK pool fee. Max leaves it aside.`}</small>}</label>
         {acceptsRecipient && <label><span>{kind === "withdraw" ? "Recipient address · optional" : "Recipient address"}</span><input value={recipient} onChange={(event) => setRecipient(event.target.value.trim())} placeholder={kind === "withdraw" ? "Defaults to your connected wallet" : "0x…"} inputMode="text" required={needsRecipient} />{kind === "transfer" && recipientStatus === "checking" && <small className="action-hint">Checking private-token setup…</small>}{kind === "transfer" && recipientStatus === "registered" && <small className="action-hint action-hint--success">Ready to receive private tokens.</small>}{kind === "transfer" && recipientStatus === "unregistered" && <small className="action-hint action-hint--error">This address has not enabled private tokens. Ask the recipient to enable them in Ready first.</small>}{kind === "transfer" && recipientStatus === "unknown" && <small className="action-hint action-hint--error">This recipient could not be verified. Check the address and try again.</small>}</label>}
-        <button className="private-submit" type="submit" disabled={!canSubmit || isSubmitting}>{isSubmitting ? "Complete in Ready…" : actionCopy[kind].button} <span>→</span></button>
-        {kind === "deposit" && <small className="action-hint">Ready may request token approval before the shield transaction.</small>}
+        {kind === "deposit" && <div className="private-actions__sequence" role="note"><strong>Two confirmations are expected</strong><ol><li><span>1</span><p><b>Approve</b> allows the pool to use this exact token amount.</p></li><li><span>2</span><p><b>Shield</b> moves it into your private balance.</p></li></ol><small>Confirm each once. After Droptron reports “Shield submitted,” reject any repeated Shield prompt.</small></div>}
+        <button className="private-submit" type="submit" disabled={!canSubmit || isSubmitting}>{isSubmitting ? "Complete in wallet…" : actionCopy[kind].button} <span>→</span></button>
         {privacyStatus === "unsupported" && <small className="action-hint">This Starknet wallet does not provide STRK20 private actions. Connect Ready to use private balances and transactions.</small>}
         {privacyStatus === "supported" && !walletAccount && <small className="action-hint">No RPC is configured for the wallet’s current network.</small>}
       </form>

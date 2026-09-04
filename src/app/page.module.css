@@ -38,3 +38,11 @@
 /* Give the product statements enough measure to breathe at desktop widths. */
 .statement{grid-template-columns:minmax(390px,.95fr) minmax(470px,1.05fr);gap:78px}.statementDetail h2{max-width:545px;text-wrap:balance}.privacy{grid-template-columns:minmax(430px,1fr) minmax(430px,1fr);gap:74px}.privacyIntro h2{max-width:530px;font-size:clamp(39px,3.75vw,49px);line-height:1.08;text-wrap:balance}
 @media(max-width:800px){.statement,.privacy{grid-template-columns:1fr}.statementDetail h2,.privacyIntro h2{max-width:570px}}
+
+/* Footer documentation links. */
+.secondary{display:inline-flex;min-height:48px;padding:0 18px;border:1px solid #d9d9dd;border-radius:9px;background:rgba(255,255,255,.58);align-items:center;justify-content:center;gap:9px;line-height:1;transition:border-color .15s ease,background-color .15s ease,transform .15s ease}.secondary:hover{border-color:#d7a18e;background:#fff;transform:translateY(-2px)}
+.privacyVisual{border:1px solid #ececf0;background:linear-gradient(132deg,#fff 5%,#f8f0ed 52%,#eff5f3);isolation:isolate}.privacyVisual::before{position:absolute;inset:-30%;background:radial-gradient(circle at 30% 42%,rgba(239,98,57,.48),transparent 22%),radial-gradient(circle at 70% 28%,rgba(207,188,225,.64),transparent 25%),radial-gradient(circle at 72% 75%,rgba(118,213,177,.43),transparent 23%),radial-gradient(circle at 36% 80%,rgba(251,209,169,.54),transparent 28%);filter:blur(27px);content:"";animation:drift 14s ease-in-out infinite alternate}.privacyGlow{display:none}.privacyPanel{inset:29px;padding:24px;background:rgba(255,255,255,.76);box-shadow:0 16px 37px rgba(77,55,48,.09)}.privacyPanel header{min-height:38px}.privacyPanel section p{min-height:86px;grid-template-columns:116px 1fr}.privacyPanel section p:last-child{border-bottom:0}
+@media(prefers-reduced-motion:reduce){.privacyVisual::before{animation:none}}
+@media(max-width:520px){.secondary{min-height:44px}.privacyPanel{inset:16px;padding:19px}.privacyPanel section p{min-height:91px;grid-template-columns:82px 1fr}}
+.footer>div{display:flex;align-items:center;gap:18px}.footer>div a{color:#4c4c56;font-size:10px;font-weight:720}
+@media(max-width:800px){.footer>div{flex-wrap:wrap}}
