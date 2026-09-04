@@ -10,7 +10,22 @@ Current milestone: fixed-price and checked linear-curve launches, a configurable
 
 `DroptronLaunchParticipation` is the wallet-mediated private purchase helper. It accepts calls only from its constructor-pinned STRK20 pool, verifies that supplied token addresses match the selected launch, executes `buy_exact_sale`, measures actual balance deltas, and approves the pool to collect the purchased allocation into an open note. An optional second open note can receive unused maximum payment.
 
-The seven production files completed a targeted AI-assisted review and its identified issues were fixed. This is not an independent audit. The owner accepted only limited-value hackathon Mainnet usage; broader or meaningful-value use still requires an independent audit and live pool-path validation.
+## Security invariants
+
+- Creator fund and settlement operations are owner-only.
+- Private helper entrypoints are callable only by the STRK20 pool fixed at construction.
+- Claim redemption accepts only series created by the configured Droptron factory.
+- Launch funding, purchase payment, sale delivery, claim funding, and claim payout verify exact before-and-after balances.
+- Launches enforce time windows, sale and raise caps, and the buyer's maximum payment.
+- Claim tickets are fully collateralized, burned before payout, and checked against the remaining reserve.
+- Non-expiring vesting collateral cannot be recovered by the creator; expiring campaign recovery begins only after expiry.
+- Value-bearing launch, claim, and redemption paths use reentrancy locks.
+- Temporary launch payment approval is reset to zero, while other approvals are exact and limited to the configured next spender.
+- Starknet transaction rollback preserves balances and ticket state when any downstream transfer or pool step fails.
+
+The broader wallet, server, persistence, and contract threat controls are catalogued in [Security controls](../docs/security-controls.md).
+
+The seven production modules completed a targeted AI-assisted review and its identified issues were fixed. The 69-test suite includes authorization, adversarial-token, reentrancy, allowance-cleanup, conservation, and rollback cases. This is not an independent audit. The owner accepted only limited-value hackathon Mainnet usage; broader or meaningful-value use still requires an independent audit and live pool-path validation.
 
 ```bash
 scarb build

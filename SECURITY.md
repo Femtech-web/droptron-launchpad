@@ -26,4 +26,4 @@ Useful report areas include Cairo contracts, pool-pinned helpers, exact approval
 - Verify the network, contract, spender, amount, and live fee before signing.
 - Use local tests or deliberately small Mainnet values until the contracts receive an independent audit.
 
-The current security assumptions and known wallet boundaries are documented in [Testing and safety](docs/testing-and-safety.md) and [Wallet integration](docs/wallet-integration.md).
+The implemented safeguards and their residual risks are documented in [Security controls](docs/security-controls.md). Known wallet boundaries and review status are covered in [Wallet integration](docs/wallet-integration.md) and [Testing and safety](docs/testing-and-safety.md).

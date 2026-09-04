@@ -71,7 +71,7 @@ Keep each pull request focused and explain:
 - how it was verified;
 - any migration, deployment, configuration, or documentation change.
 
-The repository's pull-request template contains the final checklist. GitHub Actions runs the full quality gate for every pull request and push to `main`; maintainers should require that check through branch protection.
+The repository's pull-request template contains the final checklist. The pre-push hook uses the full gate when the Cairo toolchain is installed and otherwise runs the web checks locally. GitHub Actions always runs the complete web and Cairo quality gate for every pull request and push to `main`; maintainers should require that check through branch protection.
 
 ## Secrets and recipient data
 

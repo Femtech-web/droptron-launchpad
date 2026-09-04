@@ -21,9 +21,10 @@ npm run verify
 
 ## Automated quality gates
 
-- Husky runs TypeScript validation before a commit and the full verification command before a push.
+- Husky runs TypeScript validation before a commit. Before a push it runs the full verification command when Scarb and Starknet Foundry are available; otherwise it runs the web gate and explains that CI still owns the mandatory contract gate.
 - GitHub Actions independently runs the quality gate for every pull request and every push to `main`.
 - Repository maintainers should require the **Quality gate** status check through branch protection; a workflow file alone does not prevent a failing merge.
+- Vercel uses `npm ci` and `npm run build`; it does not install Git hooks or require the Cairo toolchain during a web deployment.
 
 ## Mainnet policy
 
@@ -42,4 +43,6 @@ They cannot dismiss a wallet-owned popup or prevent a wallet from constructing a
 
 ## Review status
 
-The production Cairo files received targeted AI-assisted review and the identified issues were fixed. This is not an independent audit. An external audit and live adversarial review are required before meaningful Mainnet value.
+The seven production Cairo modules received targeted AI-assisted review across authorization, reentrancy, arithmetic, exact token accounting, claim collateral, allowance lifetime, lifecycle transitions, and rollback behavior. Identified issues were fixed and the complete 69-test suite passes.
+
+This is an internal review record, not an independent audit or certification. An external audit and live adversarial review are required before meaningful Mainnet value. See [Security controls](security-controls.md) for the implemented controls, evidence, and remaining trust assumptions.

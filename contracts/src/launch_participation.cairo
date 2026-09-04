@@ -38,8 +38,8 @@ pub trait ILaunchParticipation<TState> {
     fn pool_address(self: @TState) -> ContractAddress;
 }
 
-/// Draft STRK20 helper for private Droptron launch participation.
-/// It must receive independent security review before any Mainnet declaration.
+/// Pool-pinned STRK20 helper for private Droptron launch participation.
+/// The deployed code remains unaudited and requires independent review before meaningful-value use.
 #[starknet::contract]
 pub mod DroptronLaunchParticipation {
     use core::num::traits::Zero;

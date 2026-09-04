@@ -1,1 +1,13 @@
-npm run verify
+asdf_data_dir=${ASDF_DATA_DIR:-"$HOME/.asdf"}
+
+if [ -d "$asdf_data_dir/shims" ]; then
+  PATH="$HOME/.local/bin:$asdf_data_dir/bin:$asdf_data_dir/shims:$PATH"
+  export PATH
+fi
+
+if command -v scarb >/dev/null 2>&1 && command -v snforge >/dev/null 2>&1; then
+  npm run verify
+else
+  echo "Cairo toolchain not found; running the web gate locally. GitHub Actions will run the required contract build and tests."
+  npm run verify:web
+fi

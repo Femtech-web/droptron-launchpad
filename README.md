@@ -246,7 +246,7 @@ Droptron is hackathon-stage, unaudited software running deliberately small-value
 
 Before meaningful value, the contracts require independent review, live adversarial testing, operational monitoring, and a deliberate upgrade or migration policy. Conventional Starknet ERC-20s with 0–18 decimals are supported; fee-on-transfer, rebasing, and non-standard balance semantics are rejected rather than approximated.
 
-Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+Review the implemented signing, approval, persistence, replay, and contract safeguards in [Security controls](docs/security-controls.md). Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ## Documentation
 
@@ -254,6 +254,7 @@ Report suspected vulnerabilities privately as described in [SECURITY.md](SECURIT
 - [Architecture](docs/architecture.md)
 - [Product experience](docs/product-experience.md)
 - [Privacy model](docs/privacy-model.md)
+- [Security controls](docs/security-controls.md)
 - [Mainnet evidence](docs/mainnet-evidence.md)
 - [Wallet and STRK20 integration](docs/wallet-integration.md)
 - [Testing and safety](docs/testing-and-safety.md)
@@ -272,7 +273,7 @@ Run the same full validation used before a Mainnet release:
 npm run verify
 ```
 
-Husky type-checks staged work before each commit and runs the complete web build and Cairo suite before each push. GitHub Actions repeats those checks independently for every pull request and every push to `main`. Make the **Quality gate** workflow a required status check in the repository's `main` branch protection settings so failed code cannot be merged for deployment.
+Husky type-checks work before each commit. Before a push it runs the complete web and Cairo suite when the local Cairo toolchain is available, or the web gate with a clear warning when it is not. GitHub Actions always runs both gates independently for every pull request and every push to `main`. Make the **Quality gate** workflow a required status check in the repository's `main` branch protection settings so failed code cannot be merged for deployment.
 
 ## License
 

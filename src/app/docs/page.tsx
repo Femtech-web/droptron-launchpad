@@ -52,7 +52,7 @@ export default function DocsPage() {
 
       <div className={styles.docsLayout}>
         <aside className={styles.sidebar} aria-label="On this page">
-          <p>On this page</p><a href="#start">Start here</a><a href="#workflows">Product workflows</a><a href="#privacy">Privacy model</a><a href="#strk20">STRK20 integration</a><a href="#architecture">Architecture</a><a href="#contracts">Contracts</a><a href="#mainnet">Mainnet evidence</a><a href="#local">Run locally</a><a href="#operations">Operational notes</a>
+          <p>On this page</p><a href="#start">Start here</a><a href="#workflows">Product workflows</a><a href="#privacy">Privacy model</a><a href="#strk20">STRK20 integration</a><a href="#architecture">Architecture</a><a href="#security">Security controls</a><a href="#contracts">Contracts</a><a href="#mainnet">Mainnet evidence</a><a href="#local">Run locally</a><a href="#operations">Operational notes</a>
         </aside>
 
         <article className={styles.content}>
@@ -96,6 +96,18 @@ export default function DocsPage() {
             <p>Supabase indexes public discovery data and resumable creator drafts. Recipient manifests are removed from ordinary JSON and encrypted server-side with AES-256-GCM. Onchain contracts and wallet state remain authoritative for funds and claims.</p>
           </section>
 
+          <section id="security">
+            <p className={styles.kicker}>Security controls</p><h2>Every signature and fund movement has a narrow purpose</h2>
+            <p>Creator access starts with a single-use, five-minute Starknet typed-data challenge bound to the site origin, chain, and wallet. Its resulting session cannot move tokens; approvals, shielding, delivery, claims, and settlement remain separate wallet-reviewed transactions.</p>
+            <ul className={styles.operations}>
+              <li><strong>Wallet-owned custody</strong><span>Ready retains account keys, viewing keys, private notes, and proof generation. Droptron never receives them.</span></li>
+              <li><strong>Scoped authorization</strong><span>Creator APIs verify the signed wallet session and recheck deployed ownership and funded state on Starknet before publication.</span></li>
+              <li><strong>Limited token authority</strong><span>Approvals use exact amounts and configured spenders. Pool-only helpers, factory allowlists, and allowance cleanup constrain private routes.</span></li>
+              <li><strong>Contract accounting</strong><span>Reentrancy locks, checked math, exact balance deltas, caps, collateral reserves, ticket burns, and atomic rollback defend value paths.</span></li>
+            </ul>
+            <aside className={styles.note}><strong>Review status</strong><p>Seven production Cairo modules received targeted AI-assisted review and 69 tests pass. This is not an independent audit or a guarantee against loss; meaningful-value use still requires external review.</p></aside>
+          </section>
+
           <section id="contracts">
             <p className={styles.kicker}>Mainnet contracts</p><h2>Small, composable contract surface</h2>
             <div className={styles.contracts}>{contracts.map(([name, address, role]) => <div key={address}><span><strong>{name}</strong><small>{role}</small></span><Address value={address} /></div>)}</div>
@@ -132,7 +144,7 @@ snforge test`}</code></pre>
             </ul>
           </section>
 
-          <footer className={styles.docsFooter}><p>Need implementation detail?</p><div><a href="https://github.com/Femtech-web/droptron-launchpad/blob/main/docs/architecture.md" target="_blank" rel="noreferrer">Architecture ↗</a><a href="https://github.com/Femtech-web/droptron-launchpad/blob/main/docs/privacy-model.md" target="_blank" rel="noreferrer">Privacy model ↗</a><a href="https://github.com/Femtech-web/droptron-launchpad/blob/main/docs/mainnet-evidence.md" target="_blank" rel="noreferrer">Mainnet evidence ↗</a></div></footer>
+          <footer className={styles.docsFooter}><p>Need implementation detail?</p><div><a href="https://github.com/Femtech-web/droptron-launchpad/blob/main/docs/architecture.md" target="_blank" rel="noreferrer">Architecture ↗</a><a href="https://github.com/Femtech-web/droptron-launchpad/blob/main/docs/privacy-model.md" target="_blank" rel="noreferrer">Privacy model ↗</a><a href="https://github.com/Femtech-web/droptron-launchpad/blob/main/docs/security-controls.md" target="_blank" rel="noreferrer">Security controls ↗</a><a href="https://github.com/Femtech-web/droptron-launchpad/blob/main/docs/mainnet-evidence.md" target="_blank" rel="noreferrer">Mainnet evidence ↗</a></div></footer>
         </article>
       </div>
     </main>

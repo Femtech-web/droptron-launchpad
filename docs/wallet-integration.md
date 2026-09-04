@@ -1,5 +1,20 @@
 # Wallet and STRK20 integration
 
+## Signed creator sessions
+
+Connecting a wallet does not silently grant creator access. When workspace sync is needed, Droptron asks the connected Starknet account to sign typed data containing:
+
+- the `Droptron` domain and session purpose;
+- the Starknet chain;
+- the wallet contract address;
+- a hash of the requesting origin;
+- a cryptographically random nonce;
+- explicit issue and five-minute expiry times.
+
+The server reloads the stored challenge, rejects an expired, consumed, or wrong-origin request, and verifies the signature through the Starknet account contract before creating a session. Each challenge is consumed atomically, so it cannot be used twice. The browser receives a random session token in an `HttpOnly`, `SameSite=Lax` cookie with `Secure` enabled in production; Supabase stores only its SHA-256 hash. Logout revokes the server record and clears the cookie.
+
+Sessions are wallet- and chain-scoped. Changing the connected account or network makes the existing session mismatch, returning the workspace to an unsigned state and requiring the new account to sign. The signature authenticates product workspace access only; it is not a token approval and cannot move funds.
+
 ## Capability detection
 
 A connected Starknet wallet is not necessarily a privacy wallet. Droptron checks the Wallet API capability advertised by the wallet before enabling shielded balance reads or private actions. Ready is the supported privacy wallet used for the Mainnet product flow.
@@ -29,3 +44,5 @@ Ready may display a generic high-risk warning for any spending limit. Droptron u
 ## Wallet-owned replays
 
 Ready has sometimes redisplayed an already successful private request after its success view closes. Droptron prevents another application submission with locks, fingerprints, stage guards, and one-shot idempotency keys. Wallet Standard does not expose a cancellation method for a request already owned by the wallet UI. If Droptron already shows success and Ready presents an identical request, reject it.
+
+For the complete control inventory and its limitations, see [Security controls](security-controls.md).
