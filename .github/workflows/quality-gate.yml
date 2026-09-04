@@ -1,0 +1,74 @@
+name: Quality gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web application
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      HUSKY: "0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build production application
+        run: npm run build
+
+  contracts:
+    name: Cairo contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.20.1"
+          scarb-lock: contracts/Scarb.lock
+
+      - name: Set up Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: "0.63.0"
+
+      - name: Show toolchain versions
+        run: |
+          scarb --version
+          snforge --version
+
+      - name: Build contracts
+        run: scarb build
+        working-directory: contracts
+
+      - name: Run contract tests
+        run: snforge test
+        working-directory: contracts

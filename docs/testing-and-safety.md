@@ -3,14 +3,27 @@
 ## Local verification
 
 ```bash
-npm run build
-
-cd contracts
-scarb build
-snforge test
+npm ci
+npm run verify
 ```
 
-The Cairo suite covers fixed and linear pricing, decimal normalization, overflow rejection, funding and settlement, allocation and raise caps, cancellation, exact token deltas, malicious token behavior, reentrancy, claim funding, early and duplicate claims, wrong ticket/token attempts, atomic rollback, and collateral conservation.
+`npm run verify` type-checks and builds the Next.js application, builds the Cairo package, and runs the complete Starknet Foundry suite. The Cairo tests cover fixed and linear pricing, decimal normalization, overflow rejection, funding and settlement, allocation and raise caps, cancellation, exact token deltas, malicious token behavior, reentrancy, claim funding, early and duplicate claims, wrong ticket/token attempts, atomic rollback, and collateral conservation.
+
+## Change expectations
+
+| Change | Minimum verification |
+| --- | --- |
+| Copy, docs, or styling | Typecheck or build as applicable, responsive review, and link check |
+| Wallet or private action | Rejection, timeout, success, account/network change, maturity, and duplicate-attempt states |
+| API, session, or persistence | Authorization boundary, invalid input, missing configuration, and retry behavior |
+| Cairo value path | Focused positive, failure, boundary, and rollback tests plus the full suite |
+| Deployment or environment | Guarded script dry run where available and updated operational documentation |
+
+## Automated quality gates
+
+- Husky runs TypeScript validation before a commit and the full verification command before a push.
+- GitHub Actions independently runs the quality gate for every pull request and every push to `main`.
+- Repository maintainers should require the **Quality gate** status check through branch protection; a workflow file alone does not prevent a failing merge.
 
 ## Mainnet policy
 

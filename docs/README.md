@@ -1,9 +1,28 @@
 # Droptron documentation
 
+These references explain the product boundary, the contracts behind it, and the operating assumptions contributors need before changing a value or privacy-sensitive path. The shorter product-facing guide is available at `/docs` in the Next.js application.
+
+## Choose a path
+
+| If you want to… | Start here |
+| --- | --- |
+| Change a creator or participant workflow | [Product experience](product-experience.md) |
+| Understand the system and source of truth | [Architecture](architecture.md) |
+| Integrate or debug a privacy wallet action | [Wallet and STRK20 integration](wallet-integration.md) |
+| Review exactly what is private | [Privacy model](privacy-model.md) |
+| Reproduce or extend the project | [Contributing](../CONTRIBUTING.md) and the root [README](../README.md) |
+| Validate a change safely | [Testing and safety](testing-and-safety.md) |
+| Verify the deployed product | [Mainnet evidence](mainnet-evidence.md) |
+
+## Reference
+
 - [Architecture](architecture.md) — system boundaries, contracts, execution paths, persistence, and replay controls.
+- [Product experience](product-experience.md) — creator and participant surfaces, next-action behavior, and privacy-aware UX rules.
 - [Privacy model](privacy-model.md) — what Droptron protects, what remains public, and who holds privacy keys.
 - [Mainnet evidence](mainnet-evidence.md) — deployed contracts, product transactions, and remaining demonstrations.
 - [Wallet and STRK20 integration](wallet-integration.md) — capability checks, registration, preflight, fees, and confirmations.
 - [Testing and safety](testing-and-safety.md) — local verification, Mainnet policy, completion guards, and review status.
+- [Contract reference](../contracts/README.md) — Cairo packages, entrypoints, invariants, and test coverage.
+- [Persistence setup](../supabase/README.md) — migrations, environment configuration, sessions, and encrypted manifests.
 
-The product-facing version is available at `/docs` in the Next.js application. Contract-specific details live in [`contracts/README.md`](../contracts/README.md), while persistence setup lives in [`supabase/README.md`](../supabase/README.md).
+Security reports follow [SECURITY.md](../SECURITY.md), not public issues.

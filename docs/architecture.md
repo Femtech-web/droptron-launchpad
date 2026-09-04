@@ -11,6 +11,8 @@ Droptron separates public launch execution from private ownership delivery.
 
 Creator-scoped UI is an authorization and presentation boundary, not an onchain privacy claim. Deployed contracts and their public state remain inspectable.
 
+The role and interaction rules behind these surfaces are defined in [Product experience](product-experience.md).
+
 ## System boundary
 
 1. **Next.js application** presents terms, performs read-only preflights, creates Wallet API requests, and indexes public product metadata.

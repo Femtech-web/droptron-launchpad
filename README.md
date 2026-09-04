@@ -16,7 +16,7 @@ Droptron is private launch and distribution infrastructure for Starknet. Teams c
 
 **[Read the docs](docs/README.md)** · **[See Mainnet evidence](docs/mainnet-evidence.md)** · **[Understand the privacy model](docs/privacy-model.md)** · **[Inspect the contracts](contracts/README.md)**
 
-Built for the STRK20 Private Sprint as a working, small-value Starknet Mainnet product.
+Built for the STRK20 Private Sprint and running on Starknet Mainnet.
 
 </div>
 
@@ -37,6 +37,7 @@ Built for the STRK20 Private Sprint as a working, small-value Starknet Mainnet p
 - [Wallet and replay safety](#wallet-behavior-and-replay-safety)
 - [Security posture](#current-security-posture)
 - [Documentation](#documentation)
+- [Contributing](#contributing)
 
 ## The problem
 
@@ -46,7 +47,7 @@ Today those steps are commonly split across scripts, spreadsheets, generic multi
 
 Droptron turns that fragmented process into one coherent Starknet workflow. It lowers the amount of custom launch infrastructure a team must build, makes token distribution accessible to smaller projects and communities, and adds privacy at the ownership layer instead of treating it as a later patch.
 
-Droptron is not a tokenomics generator and does not decide a project's economic policy. It is the execution layer that helps a team put an already chosen token, sale, allocation, airdrop, and vesting plan into operation safely and privately.
+Droptron does not prescribe a project's tokenomics or economic policy. It gives teams the infrastructure to create a fixed-supply token—or bring an existing Starknet token—then execute the chosen sale, allocation, airdrop, and vesting plan through one coherent private distribution workflow.
 
 ## What teams can do
 
@@ -225,6 +226,7 @@ The Cairo suite currently contains **69 passing tests** covering pricing, decima
 | `contracts/tests/` | Unit, integration, rollback, adversarial, and fuzz coverage |
 | `supabase/migrations/` | Creator sessions, encrypted drafts, public discovery, and claims metadata |
 | `docs/` | Public architecture, privacy, evidence, wallet, and safety references |
+| `.github/` | Pull-request guidance and the independent CI quality gate |
 | `scripts/` | Guarded class declaration, deployment, and Mainnet configuration tooling |
 
 ## Wallet behavior and replay safety
@@ -244,10 +246,13 @@ Droptron is hackathon-stage, unaudited software running deliberately small-value
 
 Before meaningful value, the contracts require independent review, live adversarial testing, operational monitoring, and a deliberate upgrade or migration policy. Conventional Starknet ERC-20s with 0–18 decimals are supported; fee-on-transfer, rebasing, and non-standard balance semantics are rejected rather than approximated.
 
+Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+
 ## Documentation
 
 - [Documentation index](docs/README.md)
 - [Architecture](docs/architecture.md)
+- [Product experience](docs/product-experience.md)
 - [Privacy model](docs/privacy-model.md)
 - [Mainnet evidence](docs/mainnet-evidence.md)
 - [Wallet and STRK20 integration](docs/wallet-integration.md)
@@ -257,9 +262,17 @@ Before meaningful value, the contracts require independent review, live adversar
 
 ## Contributing
 
-Keep privacy claims narrow and testable. Changes touching funds, pricing, note flows, ticket redemption, authorization, or persisted workflow stages should include focused tests and update the relevant documentation.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, repository conventions, validation expectations, and the pull-request checklist. Keep privacy claims narrow and testable, and never commit wallet secrets or plaintext production recipient manifests.
 
-Never commit `.env.local`, account keys, seed phrases, viewing keys, decrypted notes, prover secrets, or plaintext production recipient manifests.
+### Quality gates
+
+Run the same full validation used before a Mainnet release:
+
+```bash
+npm run verify
+```
+
+Husky type-checks staged work before each commit and runs the complete web build and Cairo suite before each push. GitHub Actions repeats those checks independently for every pull request and every push to `main`. Make the **Quality gate** workflow a required status check in the repository's `main` branch protection settings so failed code cannot be merged for deployment.
 
 ## License
 

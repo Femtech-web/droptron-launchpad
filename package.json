@@ -6,6 +6,12 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "contracts:build": "cd contracts && scarb build",
+    "contracts:test": "cd contracts && snforge test",
+    "verify:web": "npm run typecheck && npm run build",
+    "verify": "npm run verify:web && npm run contracts:build && npm run contracts:test",
+    "prepare": "node .husky/install.mjs",
     "deploy:drop:estimate": "node --env-file=.env.local scripts/deploy-drop.mjs estimate",
     "deploy:drop": "node --env-file=.env.local scripts/deploy-drop.mjs deploy",
     "declare:launch:estimate": "node --env-file=.env.local scripts/declare-launch.mjs estimate",
@@ -35,6 +41,7 @@
     "@starknet-io/types-js": "0.10.3",
     "@types/node": "24.10.2",
     "@types/react": "19.2.7",
+    "husky": "^9.1.7",
     "typescript": "^5.9.3"
   }
 }
