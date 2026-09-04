@@ -20,6 +20,7 @@ Droptron was exercised on Starknet Mainnet with deliberately small values. The c
 | Fund launch allocation | [`0x36582e…fa600`](https://voyager.online/tx/0x36582e6064c99eafc761244cf38deced53f94142ea258a6718cf06b4a7fa600) | 1,000 DROP funded |
 | Private launch participation | [`0x00fcb6…bbd76`](https://voyager.online/tx/0x00fcb612b93683c76cc75c3db02f2aeaf4fe75cff2768e7b8c8b23c2f01bbd76) | Pool activity, public purchase, shielded output |
 | Atomic private Disperse | [`0x74bf92…eac52`](https://voyager.online/tx/0x74bf92804c5729099dfdb7910f1cad1d0eca8925f06aea1a5d08444692eac52) | One private recipient batch |
+| Shield airdrop claim tickets | [`0x057ac7…5d3a8`](https://voyager.online/tx/0x057ac7ff4b89aaf926d4c7deae92ba670c0f78c35ef308189e74957631e5d3a8) | Factory-issued tickets deposited into STRK20 |
 | Airdrop ticket delivery | [`0x1d621e…e14ef`](https://voyager.online/tx/0x1d621e01eaa408783e7414d212ae086479b275181dd81b16f390f0e146e14ef) | Private claim tickets delivered |
 | Airdrop redemption | [`0x037042…7e946`](https://voyager.online/tx/0x03704277323cacf7c2d3df3d2c710386c8dfa2df08f3633113bee2d262d7e946) | Ticket spent, shielded DROP returned |
 | Vesting-ticket delivery | [`0x1a652a…d4c52`](https://voyager.online/tx/0x1a652a277121078da04388530e5637e5789bdeab41ecabe5f7ff013337d4c52) | Two tranche tickets delivered and discovered |
@@ -29,4 +30,4 @@ Droptron was exercised on Starknet Mainnet with deliberately small values. The c
 - Redeem the first vesting tranche after its unlock.
 - Redeem the second vesting tranche after its unlock.
 - Exercise creator settlement after the launch closes: withdraw proceeds and recover unsold allocation.
-- Publish the final hosted demo and demo-video URLs in `strk20.json`.
+- Record the three-minute demo and add its public URL to `strk20.json`; the hosted product URL is already published.

@@ -19,9 +19,17 @@ Sessions are wallet- and chain-scoped. Changing the connected account or network
 
 A connected Starknet wallet is not necessarily a privacy wallet. Droptron checks the Wallet API capability advertised by the wallet before enabling shielded balance reads or private actions. Ready is the supported privacy wallet used for the Mainnet product flow.
 
+Droptron discovers injected wallets through Wallet Standard and displays every wallet announced to the current browser origin. It does not maintain an allowlist that could hide Ready X. If Ready X appears on localhost but not on the deployed site, enable the extension for the deployed domain, unlock it, and refresh; the application cannot connect an extension the browser has not exposed to that origin.
+
+Droptron uses the private-dapp Wallet API route. Ready owns the viewing and spending keys, discovers the user's notes, reaches the proving service, builds the proof, and submits the private transaction. The Droptron deployment therefore needs its Starknet RPC configuration but does not need its own proving-service URL, hosted discovery indexer, private key, viewing key, or prover secret.
+
+The Droptron anonymizer/helper contracts do not replace proof generation. They are pool-pinned targets reached with `privacy_invoke` from within an already proved private transaction.
+
 ## Registration
 
-Private-token registration is once per account, chain, and STRK20 pool. Ready owns this setup. The user enables private tokens inside Ready; Droptron does not derive or submit a viewing key.
+Private-token registration is once per account, chain, and STRK20 pool. Ready owns this setup. The user enables private tokens inside Ready from **Settings → Private tokens** while using a standard account; Droptron does not derive or submit a viewing key.
+
+Registration and shielding are ordinary public Starknet transactions and require no private spend proof. Spending a shielded note—for participation, private delivery, or a claim—does require a proof, which Ready obtains through its own service path.
 
 ## Preflight
 
@@ -41,8 +49,12 @@ A normal shield may request an exact ERC-20 approval and then the pool deposit. 
 
 Ready may display a generic high-risk warning for any spending limit. Droptron uses the configured pool as spender and exact amounts rather than unlimited allowances. Users should still inspect the wallet review.
 
-## Wallet-owned replays
+## Reported Ready X replay risk
 
 Ready has sometimes redisplayed an already successful private request after its success view closes. Droptron prevents another application submission with locks, fingerprints, stage guards, and one-shot idempotency keys. Wallet Standard does not expose a cancellation method for a request already owned by the wallet UI. If Droptron already shows success and Ready presents an identical request, reject it.
+
+Droptron submitted a normal-speed reproduction recording and [the successful Mainnet transaction](https://voyager.online/tx/0x05f5c437010fcd05eb37ddafb19593ed3a6c08d1bbadc4b5613a48cb59888e74f) to Ready Support on September 4, 2026 as ticket **181367**. The observed request used `WalletAccountV6.strk20InvokeTransaction(actions)`, Wallet API `0.10.3`, Ready X `5.33.9`, and `starknet.js` `10.4.0`. The second prompt was rejected, so the report does not claim a confirmed duplicate spend. Ready has acknowledged receipt of the support request but has not yet provided a technical conclusion or public tracking URL.
+
+The application records a privacy-safe request identifier, SHA-256 action fingerprint, action types, wallet name, resolution hash, and elapsed time. It deliberately excludes addresses, values, calldata, private balances, notes, viewing keys, and proof material. This makes it possible to distinguish a second dapp submission from a wallet-owned redisplay without weakening user privacy.
 
 For the complete control inventory and its limitations, see [Security controls](security-controls.md).

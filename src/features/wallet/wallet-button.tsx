@@ -23,6 +23,9 @@ export function WalletButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const controlRef = useRef<HTMLDivElement>(null);
+  const hasReadyWallet = wallets.some((wallet) =>
+    /ready|argent/i.test(wallet.name),
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -122,10 +125,28 @@ export function WalletButton() {
           ) : (
             <p>
               No Starknet wallet found. Install{" "}
-              <a href="https://www.ready.co/" target="_blank" rel="noreferrer">
-                Ready
+              <a
+                href="https://chromewebstore.google.com/detail/argent-x/dlcobpjiigpikoobohmabehhmhfoodbb"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Ready X
               </a>{" "}
               to use private actions.
+            </p>
+          )}
+          {!hasReadyWallet && wallets.length > 0 && (
+            <p className="wallet-menu__ready-help">
+              Private actions require a STRK20-capable wallet. Droptron is tested
+              with{" "}
+              <a
+                href="https://chromewebstore.google.com/detail/argent-x/dlcobpjiigpikoobohmabehhmhfoodbb"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Ready X
+              </a>
+              . Install or enable it, allow access to this site, then refresh.
             </p>
           )}
           {error && <small>{error}</small>}

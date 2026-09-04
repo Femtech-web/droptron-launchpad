@@ -14,6 +14,7 @@ These references explain the product boundary, the contracts behind it, and the 
 | Reproduce or extend the project | [Contributing](../CONTRIBUTING.md) and the root [README](../README.md) |
 | Validate a change safely | [Testing and safety](testing-and-safety.md) |
 | Verify the deployed product | [Mainnet evidence](mainnet-evidence.md) |
+| See what comes after the hackathon | [Roadmap](roadmap.md) |
 
 ## Reference
 
@@ -24,6 +25,7 @@ These references explain the product boundary, the contracts behind it, and the 
 - [Mainnet evidence](mainnet-evidence.md) — deployed contracts, product transactions, and remaining demonstrations.
 - [Wallet and STRK20 integration](wallet-integration.md) — capability checks, registration, preflight, fees, and confirmations.
 - [Testing and safety](testing-and-safety.md) — local verification, Mainnet policy, completion guards, and review status.
+- [Roadmap](roadmap.md) — focused post-hackathon priorities for production readiness, assets, wallets, and creator operations.
 - [Contract reference](../contracts/README.md) — Cairo packages, entrypoints, invariants, and test coverage.
 - [Persistence setup](../supabase/README.md) — migrations, environment configuration, sessions, and encrypted manifests.
 

@@ -59,6 +59,20 @@ function validateActions(actions: STRK20_ACTION[]) {
   }
 }
 
+async function diagnosticFingerprint(value: string) {
+  try {
+    const digest = await globalThis.crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(value),
+    );
+    return Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
+  } catch {
+    return "unavailable";
+  }
+}
+
 /**
  * The single app boundary for STRK20 requests. It accepts wallet-mediated
  * actions only; Droptron never accesses a viewing key, proof, or note state.
@@ -93,17 +107,24 @@ export async function submitPrivateActions(
   }
 
   const requestId = `private-${Date.now()}-${++requestSequence}`;
-  console.info("[Droptron STRK20] private request started", {
-    requestId,
-    actionCount: actions.length,
-  });
-  const request = account.strk20InvokeTransaction(actions);
+  const startedAt = Date.now();
+  const request = (async () => {
+    console.info("[Droptron STRK20] private request started", {
+      requestId,
+      actionCount: actions.length,
+      actionTypes: actions.map((action) => action.type),
+      fingerprint: await diagnosticFingerprint(fingerprint),
+      wallet: account.walletProvider.name,
+    });
+    return account.strk20InvokeTransaction(actions);
+  })();
   accountRequests.set(fingerprint, request);
   try {
     const result = await request;
     console.info("[Droptron STRK20] private request resolved", {
       requestId,
       transactionHash: result.transaction_hash,
+      elapsedMs: Date.now() - startedAt,
     });
     if (oneTimeKey) rememberCompletedOneTimeRequest(oneTimeKey, result);
     return result;

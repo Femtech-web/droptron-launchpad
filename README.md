@@ -29,12 +29,14 @@ Built for the STRK20 Private Sprint and running on Starknet Mainnet.
 - [Why Droptron is different](#why-droptron-is-different)
 - [Private distribution journey](#a-complete-private-distribution-journey)
 - [STRK20 integration](#strk20-integration-end-to-end)
+- [Wallet setup](#wallet-setup-for-private-actions)
 - [Privacy at a glance](#privacy-at-a-glance)
 - [Architecture decisions](#architecture-decisions-that-matter)
 - [Mainnet product status](#mainnet-product-status)
 - [Run locally](#run-locally)
 - [Repository map](#repository-map)
 - [Wallet and replay safety](#wallet-behavior-and-replay-safety)
+- [Upstream contribution](#upstream-contribution-in-review)
 - [Security posture](#current-security-posture)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
@@ -119,6 +121,17 @@ flowchart LR
     Index -. never authorizes funds .-> UI
 ```
 
+## Wallet setup for private actions
+
+Droptron recommends the official [Ready X browser extension](https://chromewebstore.google.com/detail/argent-x/dlcobpjiigpikoobohmabehhmhfoodbb), which was used for the complete Mainnet test. Public Starknet actions may work with other discovered wallets, but private actions require a wallet that advertises the STRK20 Wallet API.
+
+1. Install and unlock Ready X, select a standard account, and switch to Starknet Mainnet.
+2. In Ready X, open **Settings → Private tokens** and enable private tokens once for the account.
+3. Keep public STRK for Starknet network fees and shielded STRK for the live STRK20 pool fee shown by Droptron.
+4. After shielding, allow roughly ten blocks for the private note to mature, then refresh the action.
+
+If Ready X does not appear in Droptron's wallet list, allow the extension access to `droptron-launchpad.vercel.app` in Chrome's extension settings and refresh the page. Droptron lists the wallets announced to the current site; it cannot connect an extension the browser has not exposed to that origin.
+
 ## Privacy at a glance
 
 | Private through STRK20 | Public by design |
@@ -176,6 +189,7 @@ The core paths have been exercised on Starknet Mainnet with deliberately small v
 | Launch funding | [`0x36582e…fa600`](https://voyager.online/tx/0x36582e6064c99eafc761244cf38deced53f94142ea258a6718cf06b4a7fa600) | Complete 1,000 DROP allocation funded |
 | Private participation | [`0x00fcb6…bbd76`](https://voyager.online/tx/0x00fcb612b93683c76cc75c3db02f2aeaf4fe75cff2768e7b8c8b23c2f01bbd76) | Public purchase executed with shielded output |
 | Private Disperse | [`0x74bf92…eac52`](https://voyager.online/tx/0x74bf92804c5729099dfdb7910f1cad1d0eca8925f06aea1a5d08444692eac52) | Atomic private recipient batch |
+| Airdrop ticket shielding | [`0x057ac7…5d3a8`](https://voyager.online/tx/0x057ac7ff4b89aaf926d4c7deae92ba670c0f78c35ef308189e74957631e5d3a8) | Factory-issued claim tickets deposited into STRK20 |
 | Airdrop delivery | [`0x1d621e…e14ef`](https://voyager.online/tx/0x1d621e01eaa408783e7414d212ae086479b275181dd81b16f390f0e146e14ef) | Private bearer tickets delivered |
 | Airdrop redemption | [`0x037042…7e946`](https://voyager.online/tx/0x03704277323cacf7c2d3df3d2c710386c8dfa2df08f3633113bee2d262d7e946) | Ticket spent and shielded DROP returned |
 | Vesting delivery | [`0x1a652a…d4c52`](https://voyager.online/tx/0x1a652a277121078da04388530e5637e5789bdeab41ecabe5f7ff013337d4c52) | Two private tranche tickets delivered and discovered |
@@ -240,6 +254,16 @@ The Cairo suite currently contains **69 passing tests** covering pricing, decima
 
 Read [wallet integration](docs/wallet-integration.md) and [testing and safety](docs/testing-and-safety.md) for the full operational model.
 
+## Upstream contribution in review
+
+While testing the complete STRK20 flow on Mainnet, we found that Ready X can redisplay an apparently identical private confirmation after the original Wallet API request has resolved successfully and its success view is closed. The unexpected prompt appeared without another action in Droptron. We rejected it, so we describe this as an accidental-resubmission risk—not a confirmed duplicate spend.
+
+We submitted the reproduction recording and [successful Mainnet transaction](https://voyager.online/tx/0x05f5c437010fcd05eb37ddafb19593ed3a6c08d1bbadc4b5613a48cb59888e74f) to Ready Support on September 4, 2026 under ticket **181367**. The report covers `WalletAccountV6.strk20InvokeTransaction(actions)` with Wallet API `0.10.3`, Ready X `5.33.9`, and `starknet.js` `10.4.0`. The report is awaiting technical acknowledgement; Ready has not supplied a public issue URL yet.
+
+Droptron now mitigates application-side resubmission with synchronous workflow locks, SHA-256 action fingerprints, shared in-flight promises, account-scoped one-shot keys, persisted terminal-stage checks, and removal of completed actions from the interface. These controls stop Droptron from intentionally opening the same request twice, while honestly recognizing that Wallet Standard cannot dismiss a review already owned by the extension.
+
+See the reproducible boundary and user guidance in [Wallet and STRK20 integration](docs/wallet-integration.md#reported-ready-x-replay-risk). Once Ready provides a public acknowledgement, this entry will link to it and record the upstream resolution.
+
 ## Current security posture
 
 Droptron is hackathon-stage, unaudited software running deliberately small-value Mainnet tests. Production Cairo files received targeted AI-assisted review and 69 local tests pass, but this is not an independent audit or a security guarantee.
@@ -258,6 +282,7 @@ Review the implemented signing, approval, persistence, replay, and contract safe
 - [Mainnet evidence](docs/mainnet-evidence.md)
 - [Wallet and STRK20 integration](docs/wallet-integration.md)
 - [Testing and safety](docs/testing-and-safety.md)
+- [Roadmap](docs/roadmap.md)
 - [Contract reference](contracts/README.md)
 - [Persistence setup](supabase/README.md)
 
