@@ -103,13 +103,13 @@ This is not a private-transfer button attached to a public launchpad. STRK20 par
 | Private outputs | Returns purchased or redeemed tokens to the pool as open-note deposits for the wallet |
 | Operational preflight | Reads the live pool fee, reserves multi-step fees, identifies public/private shortfalls, and waits for note maturity |
 
-Ready owns viewing keys, private notes, proof generation, and private-state discovery. The browser never receives a seed phrase, private key, viewing key, proof secret, decrypted note registry, or prover configuration.
+The connected STRK20-enabled wallet owns viewing keys, private notes, proof generation, and private-state discovery. Droptron never receives a seed phrase, private key, viewing key, proof secret, decrypted note registry, or prover configuration. Ready X is the wallet used for the verified Mainnet flow.
 
 <p align="center">
-  <img src="public/diagrams/droptron-architecture.svg" alt="Droptron architecture: creators and recipients use Droptron, private actions pass through Ready X and the STRK20 pool, pool-pinned contracts enforce launches and claims, and Supabase provides discovery metadata without fund authority." width="100%" />
+  <img src="public/diagrams/droptron-architecture.svg" alt="Droptron architecture: creators and recipients use Droptron, private actions pass through an STRK20-enabled wallet and the STRK20 pool, pool-pinned contracts enforce launches and claims, and Supabase provides discovery metadata without fund authority." width="100%" />
 </p>
 
-Droptron coordinates product state and public discovery; Ready X retains user authority over keys, private notes, proofs, and signatures; Starknet contracts remain the source of truth for value and entitlement enforcement. See the detailed [architecture and trust boundaries](docs/architecture.md).
+Droptron coordinates product state and public discovery; the connected STRK20-enabled wallet retains user authority over keys, private notes, proofs, and signatures; Starknet contracts remain the source of truth for value and entitlement enforcement. See the detailed [architecture and trust boundaries](docs/architecture.md).
 
 ## Wallet setup for private actions
 
