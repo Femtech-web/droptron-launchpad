@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="760" viewBox="0 0 1440 760" role="img" aria-labelledby="title description">
+  <title id="title">Droptron system architecture</title>
+  <desc id="description">Creators and participants use the Droptron application. Droptron reads discovery metadata from Supabase but never authorizes funds. Private requests move through Ready X to the STRK20 pool. The pool creates shielded allocations or invokes pool-pinned launch and claim contracts, which return open-note outputs to the pool.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#172033" flood-opacity="0.08"/>
+    </filter>
+    <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#344054"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#4D6BFE"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#7C5CFC"/>
+    </marker>
+    <style>
+      text { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 1.7px; fill: #667085; }
+      .title { font-size: 25px; font-weight: 750; fill: #101828; }
+      .subtitle { font-size: 14px; fill: #667085; }
+      .group-title { font-size: 13px; font-weight: 750; letter-spacing: 1.2px; fill: #475467; }
+      .node-title { font-size: 16px; font-weight: 750; fill: #101828; }
+      .node-copy { font-size: 12px; fill: #667085; }
+      .label { font-size: 11px; font-weight: 650; fill: #475467; }
+      .pill { font-size: 10px; font-weight: 750; letter-spacing: .8px; }
+      .line { fill: none; stroke: #344054; stroke-width: 2; marker-end: url(#arrow-dark); }
+      .blue-line { fill: none; stroke: #4D6BFE; stroke-width: 2.5; marker-end: url(#arrow-blue); }
+      .purple-line { fill: none; stroke: #7C5CFC; stroke-width: 2.5; marker-end: url(#arrow-purple); }
+      .return-line { fill: none; stroke: #7C5CFC; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#arrow-purple); }
+      .discovery-line { fill: none; stroke: #667085; stroke-width: 2; stroke-dasharray: 6 6; marker-end: url(#arrow-dark); }
+    </style>
+  </defs>
+
+  <rect width="1440" height="760" rx="28" fill="#F8FAFC"/>
+  <rect x="1" y="1" width="1438" height="758" rx="27" fill="none" stroke="#E4E7EC" stroke-width="2"/>
+
+  <text x="64" y="62" class="eyebrow">SYSTEM ARCHITECTURE</text>
+  <text x="64" y="100" class="title">Public coordination. Private ownership.</text>
+  <text x="64" y="128" class="subtitle">Funds stay on Starknet; Droptron coordinates the route without holding user keys or private notes.</text>
+
+  <!-- System boundaries -->
+  <rect x="48" y="174" width="214" height="416" rx="20" fill="#FFFFFF" stroke="#D0D5DD" stroke-width="1.5"/>
+  <text x="72" y="206" class="group-title">PEOPLE</text>
+
+  <rect x="294" y="174" width="264" height="520" rx="20" fill="#FFF6F2" stroke="#F5B89F" stroke-width="1.5"/>
+  <text x="318" y="206" class="group-title">DROPTRON PRODUCT</text>
+
+  <rect x="590" y="174" width="270" height="416" rx="20" fill="#F2F7FF" stroke="#ABC6FF" stroke-width="1.5"/>
+  <text x="614" y="206" class="group-title">PRIVACY WALLET</text>
+
+  <rect x="892" y="174" width="242" height="416" rx="20" fill="#F5F2FF" stroke="#C6B9FF" stroke-width="1.5"/>
+  <text x="916" y="206" class="group-title">PRIVATE EXECUTION</text>
+
+  <rect x="1166" y="174" width="226" height="520" rx="20" fill="#F2FBF7" stroke="#A8DFC3" stroke-width="1.5"/>
+  <text x="1190" y="206" class="group-title">ONCHAIN RESULTS</text>
+
+  <!-- Actors -->
+  <g filter="url(#shadow)">
+    <rect x="72" y="246" width="166" height="92" rx="14" fill="#FFFFFF" stroke="#D0D5DD"/>
+    <circle cx="101" cy="277" r="14" fill="#FFE7DB"/>
+    <circle cx="101" cy="273" r="5" fill="#E56B43"/>
+    <path d="M91 290c2-8 18-8 20 0" fill="#E56B43"/>
+    <text x="124" y="278" class="node-title">Creator</text>
+    <text x="88" y="316" class="node-copy">Creates and operates</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="72" y="372" width="166" height="112" rx="14" fill="#FFFFFF" stroke="#D0D5DD"/>
+    <circle cx="101" cy="405" r="14" fill="#E6F8EF"/>
+    <circle cx="101" cy="401" r="5" fill="#119667"/>
+    <path d="M91 418c2-8 18-8 20 0" fill="#119667"/>
+    <text x="124" y="401" class="node-title">Participant</text>
+    <text x="124" y="422" class="node-title">or recipient</text>
+    <text x="88" y="460" class="node-copy">Joins, receives, claims</text>
+  </g>
+
+  <!-- Droptron -->
+  <g filter="url(#shadow)">
+    <rect x="318" y="284" width="216" height="138" rx="16" fill="#FFFFFF" stroke="#F29A76" stroke-width="2"/>
+    <rect x="338" y="306" width="38" height="38" rx="10" fill="#171719"/>
+    <path d="M349 318h15M349 328h10" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M365 306l11 11" stroke="#E56B43" stroke-width="4" stroke-linecap="round"/>
+    <text x="392" y="323" class="node-title">Droptron</text>
+    <text x="338" y="365" class="node-copy">Launch and distribution UI</text>
+    <text x="338" y="386" class="node-copy">Preflight + workflow state</text>
+    <rect x="338" y="397" width="91" height="18" rx="9" fill="#FFF0E9"/>
+    <text x="348" y="410" class="pill" fill="#C84F28">NON-CUSTODIAL</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="318" y="530" width="216" height="106" rx="16" fill="#FFFFFF" stroke="#D0D5DD"/>
+    <text x="338" y="561" class="node-title">Supabase</text>
+    <text x="338" y="584" class="node-copy">Discovery + encrypted drafts</text>
+    <text x="338" y="606" class="node-copy">Never authorizes funds</text>
+  </g>
+
+  <!-- Wallet -->
+  <g filter="url(#shadow)">
+    <rect x="614" y="284" width="222" height="156" rx="16" fill="#FFFFFF" stroke="#7EA9FF" stroke-width="2"/>
+    <circle cx="648" cy="320" r="18" fill="#EAF2FF"/>
+    <path d="M639 320l7 7 12-15" fill="none" stroke="#4D6BFE" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="680" y="326" class="node-title">Ready X wallet</text>
+    <text x="638" y="365" class="node-copy">Keys + private note discovery</text>
+    <text x="638" y="387" class="node-copy">Proof generation + signing</text>
+    <rect x="638" y="406" width="112" height="20" rx="10" fill="#EAF2FF"/>
+    <text x="649" y="420" class="pill" fill="#3154D8">USER AUTHORITY</text>
+  </g>
+
+  <!-- STRK20 -->
+  <g filter="url(#shadow)">
+    <rect x="916" y="284" width="194" height="156" rx="16" fill="#FFFFFF" stroke="#9A83FF" stroke-width="2"/>
+    <circle cx="950" cy="320" r="18" fill="#EEE9FF"/>
+    <path d="M942 320h16M950 312v16" stroke="#7C5CFC" stroke-width="3" stroke-linecap="round"/>
+    <text x="982" y="326" class="node-title">STRK20 pool</text>
+    <text x="940" y="365" class="node-copy">Verifies private actions</text>
+    <text x="940" y="387" class="node-copy">Moves shielded notes</text>
+    <rect x="940" y="406" width="107" height="20" rx="10" fill="#EEE9FF"/>
+    <text x="952" y="420" class="pill" fill="#6345DF">ONCHAIN PRIVACY</text>
+  </g>
+
+  <!-- Results and contracts -->
+  <g filter="url(#shadow)">
+    <rect x="1190" y="242" width="178" height="86" rx="14" fill="#FFFFFF" stroke="#78CFA4" stroke-width="1.5"/>
+    <circle cx="1218" cy="276" r="12" fill="#DDF6E9"/>
+    <path d="M1212 276l4 4 8-9" fill="none" stroke="#119667" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1241" y="278" class="node-title">Shielded</text>
+    <text x="1241" y="298" class="node-title">allocation</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1190" y="362" width="178" height="86" rx="14" fill="#FFFFFF" stroke="#D8B36A" stroke-width="1.5"/>
+    <rect x="1207" y="386" width="24" height="24" rx="6" fill="#FFF3D8"/>
+    <path d="M1213 398h12M1219 392v12" stroke="#B7791F" stroke-width="2" stroke-linecap="round"/>
+    <text x="1241" y="397" class="node-title">Pool-pinned</text>
+    <text x="1241" y="417" class="node-title">helpers</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1190" y="482" width="178" height="74" rx="14" fill="#FFFFFF" stroke="#D0D5DD"/>
+    <text x="1210" y="514" class="node-title">Launch contract</text>
+    <text x="1210" y="537" class="node-copy">Sale enforcement</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="1190" y="580" width="178" height="74" rx="14" fill="#FFFFFF" stroke="#D0D5DD"/>
+    <text x="1210" y="612" class="node-title">Claim series</text>
+    <text x="1210" y="635" class="node-copy">Airdrop + vesting</text>
+  </g>
+
+  <!-- Connections -->
+  <path d="M238 292H278Q286 292 294 308L318 334" class="line"/>
+  <path d="M238 428H278Q288 428 296 408L318 382" class="line"/>
+
+  <path d="M534 344H574Q582 344 590 344L614 344" class="blue-line"/>
+  <rect x="526" y="304" width="91" height="26" rx="13" fill="#F8FAFC" stroke="#D0D5DD"/>
+  <text x="538" y="321" class="label">Wallet API</text>
+
+  <path d="M836 362H876Q884 362 892 362L916 362" class="purple-line"/>
+  <rect x="827" y="322" width="105" height="26" rx="13" fill="#F8FAFC" stroke="#D0D5DD"/>
+  <text x="839" y="339" class="label">Proof + actions</text>
+
+  <path d="M1110 318H1150Q1158 318 1166 308L1190 288" class="purple-line"/>
+  <rect x="1080" y="264" width="104" height="26" rx="13" fill="#F8FAFC" stroke="#D0D5DD"/>
+  <text x="1092" y="281" class="label">Private transfer</text>
+
+  <path d="M1110 394H1152Q1160 394 1166 398L1190 404" class="purple-line"/>
+  <rect x="1087" y="354" width="98" height="26" rx="13" fill="#F8FAFC" stroke="#D0D5DD"/>
+  <text x="1099" y="371" class="label">privacy_invoke</text>
+
+  <path d="M1279 448V482" class="line"/>
+  <path d="M1334 448V560Q1334 570 1326 580" class="line"/>
+
+  <path d="M1190 519H1152Q1138 519 1138 505V470Q1138 456 1124 456H1038Q1024 456 1024 440" class="return-line"/>
+  <path d="M1190 617H1142Q1126 617 1126 601V474Q1126 458 1110 458H1000Q984 458 984 440" class="return-line"/>
+  <rect x="1029" y="536" width="99" height="26" rx="13" fill="#F8FAFC" stroke="#D0D5DD"/>
+  <text x="1041" y="553" class="label">Open-note output</text>
+
+  <path d="M426 422V514Q426 522 426 530" class="discovery-line"/>
+  <path d="M390 530V438Q390 430 390 422" class="discovery-line"/>
+  <rect x="337" y="468" width="142" height="26" rx="13" fill="#F8FAFC" stroke="#D0D5DD"/>
+  <text x="349" y="485" class="label">Metadata only</text>
+
+  <!-- Footer legend -->
+  <rect x="48" y="716" width="1344" height="1" fill="#E4E7EC"/>
+  <circle cx="68" cy="738" r="5" fill="#4D6BFE"/>
+  <text x="81" y="742" class="label">Wallet boundary</text>
+  <circle cx="206" cy="738" r="5" fill="#7C5CFC"/>
+  <text x="219" y="742" class="label">Private execution</text>
+  <line x1="364" y1="738" x2="390" y2="738" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="401" y="742" class="label">Discovery metadata; never fund authority</text>
+  <text x="1368" y="742" text-anchor="end" class="label">Starknet Mainnet</text>
+</svg>

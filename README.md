@@ -105,21 +105,11 @@ This is not a private-transfer button attached to a public launchpad. STRK20 par
 
 Ready owns viewing keys, private notes, proof generation, and private-state discovery. The browser never receives a seed phrase, private key, viewing key, proof secret, decrypted note registry, or prover configuration.
 
-```mermaid
-flowchart LR
-    Creator["Creator"] --> UI["Droptron"]
-    Participant["Participant / recipient"] --> UI
-    UI -->|capability, balances, private request| Wallet["Ready wallet"]
-    Wallet -->|proof + private actions| Pool["STRK20 pool"]
-    Pool -->|private transfer| PrivateNote["Shielded allocation"]
-    Pool -->|privacy_invoke| Helpers["Pool-pinned helpers"]
-    Helpers --> Launch["Launch contract"]
-    Helpers --> Claims["Claim series"]
-    Launch -->|open-note output| Pool
-    Claims -->|open-note output| Pool
-    UI --> Index["Supabase discovery index"]
-    Index -. never authorizes funds .-> UI
-```
+<p align="center">
+  <img src="public/diagrams/droptron-architecture.svg" alt="Droptron architecture: creators and recipients use Droptron, private actions pass through Ready X and the STRK20 pool, pool-pinned contracts enforce launches and claims, and Supabase provides discovery metadata without fund authority." width="100%" />
+</p>
+
+Droptron coordinates product state and public discovery; Ready X retains user authority over keys, private notes, proofs, and signatures; Starknet contracts remain the source of truth for value and entitlement enforcement. See the detailed [architecture and trust boundaries](docs/architecture.md).
 
 ## Wallet setup for private actions
 
