@@ -14,7 +14,7 @@
 
 Droptron is private launch and distribution infrastructure for Starknet. Teams can create a token, run a public sale, distribute private allocations, publish airdrop claims, and schedule vesting from one product—while STRK20 keeps the wallet-to-allocation route private.
 
-**[Read the docs](docs/README.md)** · **[See Mainnet evidence](docs/mainnet-evidence.md)** · **[Understand the privacy model](docs/privacy-model.md)** · **[Inspect the contracts](contracts/README.md)**
+**[Watch the demo](https://youtu.be/nVbfW7qmM5U)** · **[Read the docs](docs/README.md)** · **[See Mainnet evidence](docs/mainnet-evidence.md)** · **[Understand the privacy model](docs/privacy-model.md)** · **[Inspect the contracts](contracts/README.md)**
 
 Built for the STRK20 Private Sprint and running on Starknet Mainnet.
 
